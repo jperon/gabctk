@@ -63,6 +63,8 @@ class Partition:
         neume = 0
         neumeencours = ''
         musique = 0
+        minimum = 0
+        maximum = 0
         for i in range(len(gabc)):
             signe = gabc[i]
             if musique == 1:
@@ -72,6 +74,8 @@ class Partition:
                     note = Note(gabc = signe, bemol = b)
                     pitches.append(note.pitch)
                     memoire = signe
+                    if minimum == 0 or note.pitch[0] < minimum: minimum = note.pitch[0]
+                    if note.pitch[0] > maximum: maximum = note.pitch[0]
                 elif signe[1] in speciaux:
                     s += 1
                     if s > 1:
@@ -112,6 +116,10 @@ class Partition:
                 elif signe[1] == '(' or signe[1] == ']':
                     musique = 1
                     neume += 1
+        transposition = int((minimum + maximum)/2) - 66
+        print(str(minimum - transposition) + "-" + str(maximum - transposition))
+        for i in range(len(pitches)):
+            pitches[i][0] = pitches[i][0] - transposition
         return pitches
 
 class Note:
