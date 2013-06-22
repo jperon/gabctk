@@ -30,7 +30,7 @@ class Gabc:
     @property
     def musique(self):
         resultat = []
-        regex = re.compile('[cf][1234]')
+        regex = re.compile('[cf][b]?[1234]')
         cles = regex.findall(self.partition)
         parties = regex.split(self.partition)[1:]
         for i in range(len(cles)):
@@ -102,7 +102,7 @@ class Partition:
                         pitches[-1][1] += .5
                     elif signe[1] == ':':
                         pitches[-1][1] += 1
-                elif signe[1] == ')':
+                elif signe[1] == ')' or signe[1] == '[':
                     musique = 0
                     if neumeencours == neume and pitches[-1][1] < pitches[-2][1]:
                         pitches[-1][1] = pitches[-2][1]
@@ -110,7 +110,7 @@ class Partition:
                 if signe[1] == ' ':
                     mot += 1
                     b = '' + self.b
-                elif signe[1] == '(':
+                elif signe[1] == '(' or signe[1] == ']':
                     musique = 1
                     neume += 1
         return pitches
@@ -125,13 +125,17 @@ class Note:
     def g2p(self,gabc):
         la = 57
         si = la + 2
-        do = si + 1
+        do = la + 3
         re = do + 2
         mi = re + 2
         fa = mi + 1
         sol = fa + 2
         octave = 12
-        gamme = (la, si, do, re, mi, fa, sol)
+        cle = gabc[0]
+        if len(cle) == 3:
+            cle = cle[0] + cle[2]
+            si = la + 1
+        note = gabc[1]
         decalage = {
             "c4": 0,
             "c3": 2,
@@ -142,8 +146,7 @@ class Note:
             "f2": 0,
             "f1": 2
         }
-        cle = gabc[0]
-        note = gabc[1]
+        gamme = (la, si, do, re, mi, fa, sol)
         i = decalage[cle] - 1
         o = 0
         notes = {}
