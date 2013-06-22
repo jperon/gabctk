@@ -12,7 +12,6 @@ def gregomid():
     except IndexError:
         sortie = Fichier(os.path.join(entree.dossier,entree.nom) + ".mid")
     gabc = Gabc(entree.contenu)
-    print(gabc.partition)
     partition = Partition(gabc = gabc.musique)
     midi = Midi(partition.pitches)
     midi.ecrire(sortie.chemin)
@@ -173,7 +172,7 @@ class Midi:
         self.sortieMidi.addTrackName(piste,temps,"Gregorien")
         self.sortieMidi.addTempo(piste,temps, 150)
         self.sortieMidi.addProgramChange(piste,0,temps,74)
-        
+
         for note in partition:
             channel = 0
             pitch = note[0]
@@ -181,7 +180,7 @@ class Midi:
             volume = 127
             self.sortieMidi.addNote(piste,channel,pitch,temps,duree,volume)
             temps += duree
-        
+
         # And write it to disk.
     def ecrire(self,chemin):
         binfile = open(chemin, 'wb')
