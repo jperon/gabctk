@@ -84,12 +84,12 @@ class Partition:
                 elif signe[1] == episeme:
                     neumeencours = neume
                     j -= 1
-                    pitches[j][1] = 1.5
+                    pitches[j][1] = 1.8
                 elif signe[1] == point:
                     j -= 1
-                    pitches[j][1] = 2
+                    pitches[j][1] = 2.3
                 elif signe[1] == quilisma:
-                    pitches[-2][1] = 1.8
+                    pitches[-2][1] = 2
                 elif signe[1] == bemol:
                     b = b + memoire[1]
                     pitches = pitches[:-1]
