@@ -1,19 +1,31 @@
 #! /usr/bin/python3
 # -*- coding: UTF-8 -*-
 
-import os,sys
+import os,sys,getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
 
-def gregomid():
-    entree = FichierTexte(sys.argv[1])
+def gregomid(arguments):
+    tempo = 165
     try:
-        sortie = Fichier(sys.argv[2])
-    except IndexError:
-        sortie = Fichier(os.path.join(entree.dossier,entree.nom) + ".mid")
+      opts, args = getopt.getopt(arguments,"hi:o:t:",["ifile=","ofile=","tempo="])
+    except getopt.GetoptError:
+        print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-t <tempo>]')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-t <tempo>]')
+            sys.exit()
+        elif opt in ("-i", "--ifile"):
+            entree = FichierTexte(arg)
+            sortie = Fichier(re.sub('.gabc','.mid',arg))
+        elif opt in ("-o", "--ofile"):
+            sortie = Fichier(arg)
+        elif opt in ("-t", "--tempo"):
+            tempo = int(arg)
     gabc = Gabc(entree.contenu)
     partition = Partition(gabc = gabc.musique)
-    midi = Midi(partition.pitches)
+    midi = Midi(partition.pitches,tempo)
     midi.ecrire(sortie.chemin)
 
 class Gabc:
@@ -173,12 +185,12 @@ class Note:
         return [pitch,duree]
 
 class Midi:
-    def __init__(self,partition):
+    def __init__(self,partition,tempo):
         piste = 0
         temps = 0
         self.sortieMidi = MIDIFile(1)
         self.sortieMidi.addTrackName(piste,temps,"Gregorien")
-        self.sortieMidi.addTempo(piste,temps, 150)
+        self.sortieMidi.addTempo(piste,temps, tempo)
         self.sortieMidi.addProgramChange(piste,0,temps,74)
 
         for note in partition:
@@ -214,4 +226,4 @@ class FichierTexte:
         return texte
 
 if __name__ == '__main__':
-    gregomid()
+    gregomid(sys.argv[1:])
