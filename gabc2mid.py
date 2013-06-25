@@ -34,9 +34,10 @@ class Gabc:
     @property
     def partition(self):
         resultat = self.contenu
-        resultat = re.sub('\n',' ',resultat)
-        regex = re.compile('%%')
+        regex = re.compile('%%\n')
         resultat = regex.split(resultat)[1]
+        resultat = re.sub('%.*\n','',resultat)
+        resultat = re.sub('\n',' ',resultat)
         return resultat
     @property
     def musique(self):
