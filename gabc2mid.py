@@ -23,7 +23,11 @@ def gregomid(arguments):
             sortie = Fichier(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
-    gabc = Gabc(entree.contenu)
+    try:
+        gabc = Gabc(entree.contenu)
+    except UnboundLocalError:
+        print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-t <tempo>]')
+        sys.exit(2)
     print(gabc.partition)
     partition = Partition(gabc = gabc.musique)
     midi = Midi(partition.pitches,tempo)
