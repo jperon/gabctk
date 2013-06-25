@@ -24,6 +24,7 @@ def gregomid(arguments):
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
     gabc = Gabc(entree.contenu)
+    print(gabc.partition)
     partition = Partition(gabc = gabc.musique)
     midi = Midi(partition.pitches,tempo)
     midi.ecrire(sortie.chemin)
@@ -65,7 +66,7 @@ class Partition:
         episeme = '_'
         point = '.'
         quilisma = 'w'
-        speciaux = 'osv'
+        speciaux = 'osvOSV'
         barres = '`,;:'
         bemol = "x"
         becarre = "y"
