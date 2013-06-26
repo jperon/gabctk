@@ -7,6 +7,7 @@ from midiutil.MidiFile3 import MIDIFile
 
 def gregomid(arguments):
     tempo = 165
+    entree = ''
     try:
       opts, args = getopt.getopt(arguments,"hi:o:t:",["ifile=","ofile=","tempo="])
     except getopt.GetoptError:
@@ -23,12 +24,10 @@ def gregomid(arguments):
             sortie = Fichier(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
-    try:
-        gabc = Gabc(entree.contenu)
-    except UnboundLocalError:
-        print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-t <tempo>]')
-        sys.exit(2)
-    print(gabc.partition)
+    if entree == '':
+        entree = FichierTexte(arguments[0])
+        sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
+    gabc = Gabc(entree.contenu)
     partition = Partition(gabc = gabc.musique)
     midi = Midi(partition.pitches,tempo)
     midi.ecrire(sortie.chemin)
