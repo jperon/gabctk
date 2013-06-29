@@ -7,30 +7,48 @@ from midiutil.MidiFile3 import MIDIFile
 
 def gregomid(arguments):
     tempo = 165
-    entree = ''
+    entree = sortie = ''
+    debug = False
     try:
-      opts, args = getopt.getopt(arguments,"hi:o:t:",["ifile=","ofile=","tempo="])
+      opts, args = getopt.getopt(arguments,"hi:o:T:t:d",["help","entree=","sortie=","texte=","tempo=","debug"])
     except getopt.GetoptError:
-        print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-t <tempo>]')
-        sys.exit(2)
+        aide(1)
     for opt, arg in opts:
         if opt == '-h':
-            print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-t <tempo>]')
-            sys.exit()
-        elif opt in ("-i", "--ifile"):
+            aide(0)
+        elif opt in ("-i", "--entree"):
             entree = FichierTexte(arg)
             sortie = Fichier(re.sub('.gabc','.mid',arg))
-        elif opt in ("-o", "--ofile"):
+        elif opt in ("-o", "--sortie"):
             sortie = Fichier(arg)
+        elif opt in ("-T", "--texte"):
+            texte = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
-    if entree == '':
-        entree = FichierTexte(arguments[0])
-        sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
-    gabc = Gabc(entree.contenu)
+        elif opt in ('-d', '--debug'):
+            debug = True
+    try:
+        if entree == '':
+            entree = FichierTexte(arguments[0])
+        if sortie == '':
+            sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
+    except IndexError: aide(2)
+    try:
+        gabc = Gabc(entree.contenu)
+    except FileNotFoundError: aide(3)
+    if debug: print(gabc.partition)
     partition = Partition(gabc = gabc.musique)
+    if debug: print(partition.texte)
     midi = Midi(partition.pitches,tempo)
     midi.ecrire(sortie.chemin)
+    try:
+        texte.ecrire(partition.texte)
+    except UnboundLocalError: pass
+    
+
+def aide(code):
+    print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-T <texte.txt>] [-t <tempo>] [-d]')
+    sys.exit(code)
 
 class Gabc:
     def __init__(self,contenu):
@@ -46,9 +64,13 @@ class Gabc:
     @property
     def musique(self):
         resultat = []
+        partition = self.partition
         regex = re.compile('[cf][b]?[1234]')
-        cles = regex.findall(self.partition)
-        parties = regex.split(self.partition)[1:]
+        cles = regex.findall(partition)
+        partiestoutes = regex.split(partition)
+        parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
+        #if partiestoutes[0][-1] == '(':
+            #parties[0] = '(' + parties[0]
         for i in range(len(cles)):
             cle = cles[i]
             for n in parties[i]:
@@ -61,7 +83,7 @@ class Partition:
         if 'partition' in parametres:
             self.pitches = parametres['pitches']
         if 'gabc' in parametres:
-            self.pitches = self.g2p(parametres['gabc'])
+            self.pitches,self.texte = self.g2p(parametres['gabc'])
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
     def g2p(self,gabc):
@@ -77,11 +99,11 @@ class Partition:
         pitches = []
         b = '' + self.b
         mot = 0
+        texte = ''
         neume = 0
         neumeencours = ''
         musique = 0
-        minimum = 0
-        maximum = 0
+        minimum = maximum = 0
         for i in range(len(gabc)):
             signe = gabc[i]
             if musique == 1:
@@ -122,22 +144,35 @@ class Partition:
                         pitches[-1][1] += .5
                     elif signe[1] == ':':
                         pitches[-1][1] += 1
-                elif signe[1] == ')' or signe[1] == '[':
-                    musique = 0
+                else:
+                    if signe[1] == ')':
+                        musique = 0
+                    if signe[1] == '[':
+                        musique = 2
                     if neumeencours == neume and pitches[-1][1] < pitches[-2][1]:
                         pitches[-1][1] = pitches[-2][1]
-            if musique == 0:
-                if signe[1] == ' ':
-                    mot += 1
-                    b = '' + self.b
-                elif signe[1] == '(' or signe[1] == ']':
+            elif musique == 0:
+                if signe[1] == '(':
                     musique = 1
                     neume += 1
+                elif signe[1] in ('{', '}'): pass
+                else:
+                    if signe[1] == ' ':
+                        mot += 1
+                        b = '' + self.b
+                        try:
+                            if texte[-1] != ' ':
+                                texte += signe[1]
+                        except IndexError: pass
+                    else: texte += signe[1]
+            elif musique == 2:
+                if signe[1] == ']':
+                    musique = 1
         transposition = int((minimum + maximum)/2) - 66
         print(str(minimum - transposition) + "-" + str(maximum - transposition))
         for i in range(len(pitches)):
             pitches[i][0] = pitches[i][0] - transposition
-        return pitches
+        return pitches, texte
 
 class Note:
     def __init__(self,**parametres):
@@ -229,6 +264,10 @@ class FichierTexte:
         texte = fichier.read(-1)
         fichier.close()
         return texte
+    def ecrire(self,contenu):
+        fichier = open(self.chemin,'w')
+        fichier.write(contenu)
+        fichier.close()
 
 if __name__ == '__main__':
     gregomid(sys.argv[1:])
