@@ -10,7 +10,7 @@ def gregomid(arguments):
     entree = sortie = ''
     debug = False
     try:
-      opts, args = getopt.getopt(arguments,"hi:o:T:t:d",["help","entree=","sortie=","texte=","tempo=","debug"])
+      opts, args = getopt.getopt(arguments,"hi:o:e:t:d",["help","entree=","sortie=","export=","tempo=","debug"])
     except getopt.GetoptError:
         aide(1)
     for opt, arg in opts:
@@ -21,7 +21,7 @@ def gregomid(arguments):
             sortie = Fichier(re.sub('.gabc','.mid',arg))
         elif opt in ("-o", "--sortie"):
             sortie = Fichier(arg)
-        elif opt in ("-T", "--texte"):
+        elif opt in ("-e", "--export"):
             texte = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
@@ -47,7 +47,7 @@ def gregomid(arguments):
     
 
 def aide(code):
-    print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-T <texte.txt>] [-t <tempo>] [-d]')
+    print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-e <texte.txt>] [-t <tempo>] [-d]')
     sys.exit(code)
 
 class Gabc:
