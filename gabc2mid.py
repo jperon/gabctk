@@ -73,8 +73,11 @@ class Gabc:
             #parties[0] = '(' + parties[0]
         for i in range(len(cles)):
             cle = cles[i]
-            for n in parties[i]:
-                resultat.append((cle,n))
+            try:
+                for n in parties[i]:
+                    resultat.append((cle,n))
+            except IndexError:
+                sys.stderr.write("Il semble que vous ayez des changements de clé sans notes subséquentes. Le résultat n'est pas garanti.\n")
         return resultat
 
 class Partition:
