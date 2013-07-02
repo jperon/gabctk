@@ -9,8 +9,9 @@ def gregomid(arguments):
     tempo = 165
     entree = sortie = ''
     debug = False
+    transposition = ''
     try:
-      opts, args = getopt.getopt(arguments,"hi:o:e:t:v",["help","entree=","sortie=","export=","tempo=","verbose"])
+      opts, args = getopt.getopt(arguments,"hi:o:e:t:d:v",["help","entree=","sortie=","export=","tempo=","transposition=","verbose"])
     except getopt.GetoptError:
         aide(1)
     for opt, arg in opts:
@@ -25,6 +26,8 @@ def gregomid(arguments):
             texte = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
+        elif opt in ("-d", "--transposition"):
+            transposition = int(arg)
         elif opt in ("-v", "--verbose"):
             debug = True
     try:
@@ -33,16 +36,14 @@ def gregomid(arguments):
         if sortie == '':
             sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
     except IndexError: aide(2)
-    try:
-        gabc = Gabc(entree.contenu)
+    try: gabc = Gabc(entree.contenu)
     except FileNotFoundError: aide(3)
     if debug: print(gabc.partition)
-    partition = Partition(gabc = gabc.musique)
+    partition = Partition(gabc = gabc.musique, transposition = transposition)
     if debug: print(partition.texte)
     midi = Midi(partition.pitches,tempo)
     midi.ecrire(sortie.chemin)
-    try:
-        texte.ecrire(partition.texte)
+    try: texte.ecrire(partition.texte)
     except UnboundLocalError: pass
     
 
@@ -80,13 +81,15 @@ class Gabc:
 
 class Partition:
     def __init__(self,**parametres):
-        self.b = ''
+        self.b = self.transposition = ''
         if 'partition' in parametres:
             self.pitches = parametres['pitches']
-        if 'gabc' in parametres:
-            self.pitches,self.texte = self.g2p(parametres['gabc'])
+        if 'transposition' in parametres:
+            self.transposition = parametres['transposition']
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
+        if 'gabc' in parametres:
+            self.pitches,self.texte = self.g2p(parametres['gabc'])
     def g2p(self,gabc):
         notes = "abcdefghijklm"
         episeme = '_'
@@ -124,7 +127,7 @@ class Partition:
                 elif signe[1] == episeme:
                     neumeencours = neume
                     j -= 1
-                    pitches[j][1] = 1.8
+                    pitches[j][1] = 1.7
                 elif signe[1] == point:
                     j -= 1
                     pitches[j][1] = 2.3
@@ -169,8 +172,11 @@ class Partition:
             elif musique == 2:
                 if signe[1] == ']':
                     musique = 1
-        transposition = int((minimum + maximum)/2) - 66
-        print(str(minimum - transposition) + "-" + str(maximum - transposition))
+        if self.transposition == '':
+            transposition = 66 - int((minimum + maximum)/2)
+        else:
+            transposition = self.transposition
+        print(str(minimum + transposition) + "-" + str(maximum + transposition))
         for i in range(len(pitches)):
             pitches[i][0] = pitches[i][0] - transposition
         return pitches, texte
@@ -209,6 +215,7 @@ class Note:
         gamme = (la, si, do, re, mi, fa, sol)
         i = decalage[cle] - 1
         o = 0
+        if cle[0] == 'f': o = -12
         notes = {}
         for j in "abcdefghijklm":
             try:
@@ -233,7 +240,6 @@ class Midi:
         self.sortieMidi.addTrackName(piste,temps,"Gregorien")
         self.sortieMidi.addTempo(piste,temps, tempo)
         self.sortieMidi.addProgramChange(piste,0,temps,74)
-
         for note in partition:
             channel = 0
             pitch = note[0]
@@ -241,8 +247,6 @@ class Midi:
             volume = 127
             self.sortieMidi.addNote(piste,channel,pitch,temps,duree,volume)
             temps += duree
-
-        # And write it to disk.
     def ecrire(self,chemin):
         binfile = open(chemin, 'wb')
         self.sortieMidi.writeFile(binfile)
