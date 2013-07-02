@@ -176,9 +176,17 @@ class Partition:
             transposition = 66 - int((minimum + maximum)/2)
         else:
             transposition = self.transposition
-        print(str(minimum + transposition) + "-" + str(maximum + transposition))
+        mino = int((minimum + transposition) / 12) - 1
+        minn = int((minimum + transposition) % 12)
+        maxo = int((maximum + transposition) / 12) - 1
+        maxn = int((maximum + transposition) % 12)
+        print( ('Do','Do#','Ré','Ré#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si')[minn]
+            + str(mino)
+            + "-"
+            + ('Do','Do#','Ré','Ré#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si')[maxn]
+            + str(maxo))
         for i in range(len(pitches)):
-            pitches[i][0] = pitches[i][0] - transposition
+            pitches[i][0] = pitches[i][0] + transposition
         return pitches, texte
 
 class Note:
@@ -215,7 +223,7 @@ class Note:
         gamme = (la, si, do, re, mi, fa, sol)
         i = decalage[cle] - 1
         o = 0
-        if cle[0] == 'f': o = -12
+        if cle == 'f3': o = -12
         notes = {}
         for j in "abcdefghijklm":
             try:
