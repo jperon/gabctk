@@ -1,2 +1,2 @@
 run:
-	python gregomid
+	python gabc2mid
