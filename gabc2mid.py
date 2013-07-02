@@ -47,7 +47,7 @@ def gregomid(arguments):
     
 
 def aide(code):
-    print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-e <texte.txt>] [-t <tempo>] [-d]')
+    print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-e <texte.txt>] [-t <tempo>] [-v]')
     sys.exit(code)
 
 class Gabc:
@@ -69,8 +69,6 @@ class Gabc:
         cles = regex.findall(partition)
         partiestoutes = regex.split(partition)
         parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
-        #if partiestoutes[0][-1] == '(':
-            #parties[0] = '(' + parties[0]
         for i in range(len(cles)):
             cle = cles[i]
             try:
