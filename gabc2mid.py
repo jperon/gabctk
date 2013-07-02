@@ -10,7 +10,7 @@ def gregomid(arguments):
     entree = sortie = ''
     debug = False
     try:
-      opts, args = getopt.getopt(arguments,"hi:o:e:t:d",["help","entree=","sortie=","export=","tempo=","debug"])
+      opts, args = getopt.getopt(arguments,"hi:o:e:t:v",["help","entree=","sortie=","export=","tempo=","verbose"])
     except getopt.GetoptError:
         aide(1)
     for opt, arg in opts:
@@ -25,7 +25,7 @@ def gregomid(arguments):
             texte = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
-        elif opt in ('-d', '--debug'):
+        elif opt in ("-v", "--verbose"):
             debug = True
     try:
         if entree == '':

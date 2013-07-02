@@ -15,6 +15,10 @@ Ce script parcourt le code *gabc*, en extrait ce qui concerne la mélodie, et pr
 
 gabc2mid.py -i \</chemin/vers/le/fichier/source.gabc\> [-o \</chemin/vers/le/fichier/destination.mid\>] [-e \</chemin/vers/le/fichier/destination.txt\>] [-t tempo]
 
-Le deuxième argument (fichier de destination) est optionnel : en son absence, gabc2mid produira un fichier midi dans le même dossier que la source, portant le même nom.
+Le deuxième argument (fichier midi de destination) est optionnel : en son absence, gabc2mid produira un fichier midi dans le même dossier que la source, portant le même nom.
 
-Le troisième est aussi optionnel, mais en son absence, aucun fichier texte ne sera produit.
+Le troisième argument (fichier texte de destination) est aussi optionnel, mais en son absence, aucun fichier texte ne sera produit.
+
+Si vous ne voulez pas modifier les options par défaut, vous pouvez aussi utiliser la syntaxe suivante :
+
+gabc2mid.py \</chemin/vers/le/fichier/source.gabc\> [\</chemin/vers/le/fichier/destination.mid\>]
