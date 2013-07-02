@@ -23,7 +23,7 @@ En l'absence du troisième argument (fichier texte de destination), aucun fichie
 
 Le tempo est exprimé en temps premiers par minute : sa valeur par défaut est 165.
 
-La transposition est exprimée en demi-tons. En son absence, gabc2mid transposera automatiquement le chant sur une tessiture facile à chanter.
+La transposition est exprimée en demi-tons. En son absence, gabc2mid transposera automatiquement le chant sur une tessiture facile à chanter. Le programme renvoie sur la sortie standard la plus basse et la plus haute notes obtenues.
 
 Si vous ne voulez pas modifier les options par défaut, vous pouvez aussi utiliser la syntaxe suivante :
 
