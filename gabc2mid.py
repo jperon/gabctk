@@ -5,7 +5,7 @@ import os,sys,getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
 
-def gregomid(arguments):
+def gabc2mid(arguments):
     tempo = 165
     entree = sortie = ''
     debug = False
@@ -283,4 +283,4 @@ class FichierTexte:
         fichier.close()
 
 if __name__ == '__main__':
-    gregomid(sys.argv[1:])
+    gabc2mid(sys.argv[1:])
