@@ -28,3 +28,4 @@ La transposition est exprimée en demi-tons. En son absence, gabc2mid transposer
 Si vous ne voulez pas modifier les options par défaut, vous pouvez aussi utiliser la syntaxe suivante :
 
 gabc2mid.py \</chemin/vers/le/fichier/source.gabc\> [\</chemin/vers/le/fichier/destination.mid\>]
+

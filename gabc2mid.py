@@ -40,12 +40,14 @@ def gabc2mid(arguments):
     except FileNotFoundError: aide(3)
     if debug: print(gabc.partition)
     partition = Partition(gabc = gabc.musique, transposition = transposition)
+    print(Note(hauteur = partition.tessiture['minimum']).nom
+        + " - "
+        + Note(hauteur = partition.tessiture['maximum']).nom)
     if debug: print(partition.texte)
-    midi = Midi(partition.pitches,tempo)
+    midi = Midi(partition.notes,tempo)
     midi.ecrire(sortie.chemin)
     try: texte.ecrire(partition.texte)
     except UnboundLocalError: pass
-    
 
 def aide(code):
     print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-e <texte.txt>] [-t <tempo>] [-v]')
@@ -81,17 +83,20 @@ class Gabc:
 
 class Partition:
     def __init__(self,**parametres):
-        self.b = self.transposition = ''
+        self.b = ''
+        transposition = None
         if 'partition' in parametres:
-            self.pitches = parametres['pitches']
-        if 'transposition' in parametres:
-            self.transposition = parametres['transposition']
+            self.notes = parametres['pitches']
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
         if 'gabc' in parametres:
-            self.pitches,self.texte = self.g2p(parametres['gabc'])
+            self.notes,self.texte = self.g2p(parametres['gabc'])
+        if 'transposition' in parametres:
+            try: transposition = int(parametres['transposition'])
+            except ValueError: pass
+        self.transposer(transposition)
     def g2p(self,gabc):
-        notes = "abcdefghijklm"
+        gamme = "abcdefghijklm"
         episeme = '_'
         point = '.'
         quilisma = 'w'
@@ -100,61 +105,58 @@ class Partition:
         bemol = "x"
         becarre = "y"
         coupures = '/ '
-        pitches = []
+        notes = []
         b = '' + self.b
         mot = 0
         texte = ''
         neume = 0
         neumeencours = ''
         musique = 0
-        minimum = maximum = 0
         for i in range(len(gabc)):
             signe = gabc[i]
             if musique == 1:
-                if signe[1].lower() in notes:
+                if signe[1].lower() in gamme:
                     j = 0
                     s = 0
                     note = Note(gabc = signe, bemol = b)
-                    pitches.append(note.pitch)
+                    notes.append(note)
                     memoire = signe
-                    if minimum == 0 or note.pitch[0] < minimum: minimum = note.pitch[0]
-                    if note.pitch[0] > maximum: maximum = note.pitch[0]
                 elif signe[1] in speciaux:
                     s += 1
                     if s > 1:
                         note = Note(gabc = memoire, bemol = b)
-                        pitches.append(note.pitch)
+                        notes.append(note)
                 elif signe[1] == episeme:
                     neumeencours = neume
                     j -= 1
-                    pitches[j][1] = 1.7
+                    notes[j].duree = 1.7
                 elif signe[1] == point:
                     j -= 1
-                    pitches[j][1] = 2.3
+                    notes[j].duree = 2.3
                 elif signe[1] == quilisma:
-                    pitches[-2][1] = 2
+                    notes[-2].duree = 2
                 elif signe[1] == bemol:
                     b = b + memoire[1]
-                    pitches = pitches[:-1]
+                    notes = notes[:-1]
                 elif signe[1] == becarre:
                     re.sub(memoire[1],'',b)
-                    pitches = pitches[:-1]
+                    notes = notes[:-1]
                 elif signe[1] in coupures:
-                    if pitches[-1][1] < pitches[-2][1]:
-                        pitches[-1][1] = pitches[-2][1]
+                    if notes[-1].duree < notes[-2].duree:
+                        notes[-1].duree = notes[-2].duree
                 elif signe[1] in barres or signe[1] in coupures:
                     b = '' + self.b
                     if signe[1] == ';':
-                        pitches[-1][1] += .5
+                        notes[-1].duree += .5
                     elif signe[1] == ':':
-                        pitches[-1][1] += 1
+                        notes[-1].duree += 1
                 else:
                     if signe[1] == ')':
                         musique = 0
                     if signe[1] == '[':
                         musique = 2
-                    if neumeencours == neume and pitches[-1][1] < pitches[-2][1]:
-                        pitches[-1][1] = pitches[-2][1]
+                    if neumeencours == neume and notes[-1].duree < notes[-2].duree:
+                        notes[-1].duree = notes[-2].duree
             elif musique == 0:
                 if signe[1] == '(':
                     musique = 1
@@ -172,30 +174,36 @@ class Partition:
             elif musique == 2:
                 if signe[1] == ']':
                     musique = 1
-        if self.transposition == '':
-            transposition = 66 - int((minimum + maximum)/2)
-        else:
-            transposition = self.transposition
-        mino = int((minimum + transposition) / 12) - 1
-        minn = int((minimum + transposition) % 12)
-        maxo = int((maximum + transposition) / 12) - 1
-        maxn = int((maximum + transposition) % 12)
-        print( ('Do','Do#','Ré','Ré#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si')[minn]
-            + str(mino)
-            + "-"
-            + ('Do','Do#','Ré','Ré#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si')[maxn]
-            + str(maxo))
-        for i in range(len(pitches)):
-            pitches[i][0] = pitches[i][0] + transposition
-        return pitches, texte
-
+        return notes, texte
+    def transposer(self,transposition):
+        if transposition == None: t = 66 - int(sum(self.tessiture.values())/2)
+        else: t = transposition
+        for i in range(len(self.notes)):
+            self.notes[i].hauteur += t
+    @property
+    def tessiture(self):
+        minimum = maximum = 0
+        for note in self.notes:
+            if minimum == 0 or note.hauteur < minimum: minimum = note.hauteur
+            if note.hauteur > maximum: maximum = note.hauteur
+        return {'minimum': minimum, 'maximum': maximum}
+        
 class Note:
     def __init__(self,**parametres):
-        self.b = parametres['bemol']
-        if 'pitch' in parametres:
-            self.pitch = parametres['pitch']
+        self.b = ''
+        if 'bemol' in parametres:
+            self.b = parametres['bemol']
+        if 'hauteur' in parametres:
+            self.hauteur = parametres['hauteur']
+        if 'duree' in parametres:
+            self.duree = parametres['duree']
         if 'gabc' in parametres:
-            self.pitch = self.g2p(parametres['gabc'])
+            self.hauteur,self.duree = self.g2p(parametres['gabc'])
+    @property
+    def nom(self):
+        o = int(self.hauteur / 12) - 1
+        n = int(self.hauteur % 12)
+        return ('Do','Do#','Ré','Ré#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si')[n] + str(o)
     def g2p(self,gabc):
         la = 57
         si = la + 2
@@ -234,11 +242,11 @@ class Note:
                 o += 12
                 notes[j] = gamme[i] + o
         duree = 1
-        hauteur = note.lower()
-        pitch = notes[hauteur]
-        if hauteur in self.b:
-            pitch -= 1
-        return [pitch,duree]
+        h = note.lower()
+        hauteur = notes[h]
+        if h in self.b:
+            hauteur -= 1
+        return hauteur,duree
 
 class Midi:
     def __init__(self,partition,tempo):
@@ -250,8 +258,8 @@ class Midi:
         self.sortieMidi.addProgramChange(piste,0,temps,74)
         for note in partition:
             channel = 0
-            pitch = note[0]
-            duree = note[1]
+            pitch = note.hauteur
+            duree = note.duree
             volume = 127
             self.sortieMidi.addNote(piste,channel,pitch,temps,duree,volume)
             temps += duree
