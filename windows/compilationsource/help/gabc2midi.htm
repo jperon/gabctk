@@ -1,0 +1,301 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><title>gabc2midi.htm</title>
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+body {
+  margin: 5px 5px 5px 5px;
+  background-color: #ffffff;
+}
+/* ========== Text Styles ========== */
+hr { color: #000000}
+body, table, span.rvts0 /* Normal text */
+{
+ font-size: 10pt;
+ font-family: 'Arial', 'Helvetica', sans-serif;
+ font-style: normal;
+ font-weight: normal;
+ color: #000000;
+ text-decoration: none;
+}
+span.rvts1 /* Heading */
+{
+ font-weight: bold;
+ color: #0000ff;
+}
+span.rvts2 /* Subheading */
+{
+ font-weight: bold;
+ color: #000080;
+}
+span.rvts3 /* Keywords */
+{
+ font-style: italic;
+ color: #800000;
+}
+a.rvts4, span.rvts4 /* Jump 1 */
+{
+ color: #008000;
+ text-decoration: underline;
+}
+a.rvts4:hover { color: #ff8080; }
+a.rvts5, span.rvts5 /* Jump 2 */
+{
+ color: #008000;
+ text-decoration: underline;
+}
+a.rvts5:hover { color: #ff8080; }
+span.rvts6
+{
+ font-size: 11pt;
+}
+a.rvts7, span.rvts7
+{
+ font-size: 11pt;
+ color: #0000ff;
+ text-decoration: underline;
+}
+a.rvts7:hover { color: #ff8080; }
+span.rvts8
+{
+ font-size: 11pt;
+ font-weight: bold;
+}
+span.rvts9
+{
+ font-size: 12pt;
+ font-weight: bold;
+ color: #ff0000;
+}
+span.rvts10
+{
+ font-size: 11pt;
+ font-style: italic;
+}
+span.rvts11
+{
+ font-family: 'Courier New', 'Courier', monospace;
+ color: #008000;
+}
+span.rvts12
+{
+ font-weight: bold;
+}
+span.rvts13
+{
+ font-size: 28pt;
+ font-weight: bold;
+ color: #ff0000;
+}
+span.rvts14
+{
+ font-size: 16pt;
+ font-weight: bold;
+ color: #0000ff;
+}
+a.rvts15, span.rvts15
+{
+ font-size: 11pt;
+ color: #0000ff;
+ text-decoration: underline;
+}
+a.rvts15:hover { color: #0000ff; }
+a.rvts16, span.rvts16
+{
+ font-size: 11pt;
+ font-style: italic;
+ color: #0000ff;
+ text-decoration: underline;
+}
+a.rvts16:hover { color: #0000ff; }
+span.rvts17
+{
+ font-family: 'Courier New', 'Courier', monospace;
+ color: #5c7db2;
+ background-color: #ebebeb;
+}
+span.rvts18
+{
+ font-size: 11pt;
+}
+span.rvts19
+{
+ font-style: italic;
+}
+span.rvts20
+{
+ font-family: 'Courier New', 'Courier', monospace;
+ color: #008000;
+}
+span.rvts21
+{
+ font-family: 'Verdana', 'Geneva', sans-serif;
+}
+a.rvts22, span.rvts22
+{
+ font-family: 'Verdana', 'Geneva', sans-serif;
+ color: #0000ff;
+ text-decoration: underline;
+}
+a.rvts22:hover { color: #ff8080; }
+/* ========== Para Styles ========== */
+p,ul,ol /* Paragraph Style */
+{
+ text-align: left;
+ text-indent: 0px;
+ padding: 0px 0px 0px 0px;
+ margin: 0px 0px 0px 0px;
+}
+.rvps1 /* Centered */
+{
+ text-align: center;
+}
+.rvps2
+{
+ background: #fff0c0;
+}
+.rvps3
+{
+ background: #ffffff;
+}
+/* ========== Lists ========== */
+.list0 {text-indent: 0px; margin-left: 24px; list-style-position: outside; list-style-type: disc;}
+.list1 {text-indent: 0px; margin-left: 48px; list-style-position: outside; list-style-type: circle;}
+.list2 {text-indent: 0px; margin-left: 48px; list-style-position: outside; list-style-type: square;}
+.list3 {text-indent: 0px; margin-left: 48px; list-style-position: outside; list-style-type: disc;}
+--></style>
+</head>
+<body>
+<p class=rvps2><span class=rvts13>gabc2midi</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts8>gabc2midi.exe</span></p>
+<p class=rvps3><span class=rvts6>version 1.3</span></p>
+<p class=rvps3><span class=rvts6>by Father Jacques Peron</span></p>
+<p class=rvps3><span class=rvts6>Windows binary (and chm help) compiled by Brother Gabriel-Marie</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>This little applicaion will create a midi file from a gabc score.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts9>Contents</span></p>
+<ul class=list3>
+<li><a class=rvts22 href="#Description">Description</a></li>
+<li><a class=rvts22 href="#Usage">Usage</a></li>
+<li><a class=rvts22 href="#Parameters">Parameters</a></li>
+<li><a class=rvts22 href="#Known Issues">Known Issues</a></li>
+<li><a class=rvts22 href="#License">License</a></li>
+<li><a class=rvts22 href="#History">History</a></li>
+<li><a class=rvts22 href="#Contact & Info">Contact &amp; Info</a></li>
+</ul>
+<p class=rvps3><span class=rvts6><br></span></p>
+<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
+<p class=rvps3><a name="Description"></a>
+<span class=rvts14>Description</span></p>
+<p class=rvps3><a class=rvts16 href="http://home.gna.org/gregorio/gabc/">gabc</a><span class=rvts6> is the language used by the program called </span><a class=rvts15 href="http://home.gna.org/gregorio/">Gregorio</a><span class=rvts6>, a tex-based application designed to render code as Gregorian Chant.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>Gregorio Home page: </span><a class=rvts7 href="http://home.gna.org/gregorio/">http://home.gna.org/gregorio/</a></p>
+<p class=rvps3><span class=rvts6>Description of gabc: </span><a class=rvts7 href="http://home.gna.org/gregorio/gabc/">http://home.gna.org/gregorio/gabc/</a></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>This application extracts the code from the </span><span class=rvts11>gabc</span><span class=rvts6> file, reads the melody and produces a midi file from the results.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>If you prefer a GUI for use with </span><span class=rvts8>gabc2midi</span><span class=rvts6>, be sure to check out </span><a class=rvts15 href="http://www.sspxusa.org/goodies/#greg">greg</a><span class=rvts6>.</span></p>
+<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
+<p class=rvps3><a name="Usage"></a>
+<span class=rvts14>Usage</span></p>
+<p class=rvps3><span class=rvts11>gabc2midi.exe -i [filename] [-o filename] [-t tempo] [-T filename]</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>Examples:</span></p>
+<p class=rvps3><span class=rvts17>gabc2midi.exe -i path/to/source.gabc -o path/to/destination.midi -t tempo -T path/to/exportfile.txt</span></p>
+<p class=rvps3><span class=rvts17>gabc2midi.exe -i c:/scores/myscore.gabc -o c:/scores/midi/mymidi.midi</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>or, simply:</span></p>
+<p class=rvps3><span class=rvts17>gabc2midi.exe [path/to/source.gabc]</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>You may specify only a single parameter being the path to the gabc file, in which case, a midi file will be produced in the same directory and using the same base name.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><a name="Parameters"></a>
+<span class=rvts9>Parameters</span><span class=rvts6> &nbsp; &nbsp; &nbsp; &nbsp;</span></p>
+<div class=rvps3><table width=756 border=1 cellpadding=3 cellspacing=-1 style="border-color: #4f7ab0; border-style: solid; border-collapse: collapse;">
+<tr valign=top>
+<td width=160 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts20>-i [file.gabc]</span></p>
+</td>
+<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>input</span> - this is the filename of the gabc file to input</p>
+</td>
+</tr>
+<tr valign=top>
+<td width=160 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts20>-o [file.midi]</span></p>
+</td>
+<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>output</span> - this is the filename of the midi file to output</p>
+</td>
+</tr>
+<tr valign=top>
+<td width=160 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts20>-t [value]</span></p>
+</td>
+<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>tempo</span> - default is 165.&nbsp; This value (<span class=rvts19>temps premier</span>) is the number of notes that can be sounded in one minute.&nbsp; In other words, during one minute, by default, the midi file will play 165 notes (not adjusted for episemas or other pauses and breaks; the value is arbitrary and was chosen because it sounded right - there isn't any mathematical reason, really, in case you were wondering) - which is about 1/3 of a second.</p>
+</td>
+</tr>
+<tr valign=top>
+<td width=160 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts20>-e [file.ext]</span></p>
+</td>
+<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>export</span> - exports the gabc code to a text file (you can specify any extension you like)</p>
+</td>
+</tr>
+<tr valign=top>
+<td width=160 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts20>-v</span></p>
+</td>
+<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>verbose</span> - prints debug messages in the console, but may not work properly due to Windows' poor handling of UTF8 in the console shell.</p>
+</td>
+</tr>
+</table>
+</div>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
+<p class=rvps3><a name="Known Issues"></a>
+<span class=rvts14>Known Issues</span></p>
+<p class=rvps3><span class=rvts6>If notes are based on a key in the same brackets, they are not taken into account.</span></p>
+<p class=rvps3><span class=rvts6>Example: Pó (c3 ** ** eh) pu (g) read (h) If (hi) on (hgh.) * (;)</span></p>
+<p class=rvps3><span class=rvts6>Workaround: (c3) Pó (eh) pu (g) read (h) If (hi) on (hgh.) * (;)</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
+<p><span class=rvts6><br></span></p>
+<p class=rvps3><a name="License"></a>
+<span class=rvts14>License</span></p>
+<p class=rvps3><span class=rvts6>By using this program you thereby agree to the terms of this license agreement.&nbsp; You use this application at your own risk, and assume the entire responsibility of it use - that means that if it does something dastardly to your computer, it is your own fault.&nbsp; However, to reassure you, know that the authour has tested it and uses it himself.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>This application may be used for any use private or commercial, and without any fees.&nbsp; You may distribute it however you like as long as you don't charge for it, and as long as it remains unchanged, and is accompanied by this help file.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
+<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
+<p><a name="History"></a>
+<span class=rvts14>History</span></p>
+<p><span class=rvts6><br></span></p>
+<p><span class=rvts6>version 1.2</span><span class=rvts6> &nbsp; &nbsp; &nbsp; &nbsp;</span><span class=rvts6>Tuesday, July 2, 2013</span></p>
+<ul class=list0>
+<li><span class=rvts6>changed debug parameter to -v</span></li>
+<li><span class=rvts6>added help source to git</span></li>
+</ul>
+<p><span class=rvts6><br></span></p>
+<p><span class=rvts6>version 1.1</span><span class=rvts6> &nbsp; &nbsp; &nbsp; &nbsp;</span><span class=rvts18>Sunday, 30 June 2013</span></p>
+<ul class=list0>
+<li><span class=rvts18>added parameter for export to text file</span></li>
+<li><span class=rvts18>added parameter for showing debug remarks</span></li>
+<li><span class=rvts18>added chm help file</span></li>
+</ul>
+<p><span class=rvts18><br></span></p>
+<p><span class=rvts6>version 1.0</span><span class=rvts6> &nbsp; &nbsp; &nbsp; &nbsp;</span><span class=rvts6>Sunday, 30 June 2013</span></p>
+<ul class=list0>
+<li><span class=rvts6>initial release</span></li>
+</ul>
+<p><span class=rvts6><br></span></p>
+<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
+<p><span class=rvts6><br></span></p>
+<p class=rvps3><a name="Contact & Info"></a>
+<span class=rvts14>Contact &amp; Info</span></p>
+<p class=rvps3><span class=rvts6>If you have ideas for improvements, or want to report a bug, please use the github interface:</span></p>
+<p class=rvps3><a class=rvts7 href="https://github.com/jperon/gabc2mid/issues">https://github.com/jperon/gabc2mid/issues</a></p>
+<p class=rvps3><a class=rvts7 href="https://github.com/jperon/gabc2mid/issues"><br></a></p>
+<p class=rvps3><span class=rvts6>or you may post something to the gregorio mailing list:</span></p>
+<p class=rvps3><a class=rvts7 href="https://mail.gna.org/listinfo/gregorio-users">https://mail.gna.org/listinfo/gregorio-users</a></p>
+<p class=rvps3><a class=rvts7 href="https://mail.gna.org/listinfo/gregorio-users"><br></a></p>
+<p class=rvps3><span class=rvts9>home</span><span class=rvts9> page for gabc2midi</span></p>
+<p class=rvps3><a class=rvts7 href="https://github.com/jperon/gabc2mid">https://github.com/jperon/gabc2mid</a></p>
+<p class=rvps3><a class=rvts7 href="https://github.com/jperon/gabc2mid"><br></a></p>
+<p class=rvps3><a class=rvts7 href="https://mail.gna.org/listinfo/gregorio-users"><br></a></p>
+</body></html>

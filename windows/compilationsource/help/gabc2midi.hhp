@@ -1,0 +1,27 @@
+﻿[OPTIONS]
+Title=gabc2midi
+Compiled file=..\gabc2midi.chm
+Error log file=
+Default topic=gabc2midi.htm
+Language=0x0000 <unknown>
+Full text search stop list file=
+Contents file=
+Index file=
+Binary TOC=No
+Auto index=No
+Binary Index=No
+Create CHI file=No
+Full-text search=No
+Display compile progress=Yes
+Display compile notes=Yes
+Default window=basic
+Enhanced decompilation=No
+Flat=No
+Compatibility=1.1 or later
+
+[WINDOWS]
+basic="",,,,,,,,,0x00042100,264,0x0010387E,[25,25,517,537],,,,0,-1,0,0
+
+[FILES]
+gabc2midi.htm
+
