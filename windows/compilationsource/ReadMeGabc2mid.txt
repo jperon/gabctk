@@ -1,5 +1,5 @@
 Wednesday, June 26, 2013
-gabc2midi.exe
+gabc2mid.exe
 by Father Jacques Peron
 https://github.com/jperon/gabc2mid
 
@@ -14,7 +14,7 @@ Description of gabc: http://home.gna.org/gregorio/gabc/
 
 This application extracts the code from the gabc file, reads the melody and produces a midi file from the results.
 
-For more information, please see the accompanying gabc2midi.chm help file.
+For more information, please see the accompanying gabc2mid.chm help file.
 
 -------------------------------------------------------------------
 LICENSE:

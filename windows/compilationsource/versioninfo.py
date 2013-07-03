@@ -15,12 +15,12 @@ VSVersionInfo(
       StringTable(
         u'040904B0',
         [StringStruct(u'CompanyName', u'SSPX by Father Jaques Peron'),
-        StringStruct(u'FileDescription', u'gabc2midi'),
+        StringStruct(u'FileDescription', u'gabc2mid'),
         StringStruct(u'FileVersion', u'0.0.1.3'),
-        StringStruct(u'InternalName', u'gabc2midi'),
+        StringStruct(u'InternalName', u'gabc2mid'),
         StringStruct(u'LegalCopyright', u'\xa9 SSPX All rights reserved.'),
-        StringStruct(u'OriginalFilename', u'gabc2midi.exe'),
-        StringStruct(u'ProductName', u'gabc2midi'),
+        StringStruct(u'OriginalFilename', u'gabc2mid.exe'),
+        StringStruct(u'ProductName', u'gabc2mid'),
         StringStruct(u'ProductVersion', u'0.0.1.3')])
       ]), 
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])

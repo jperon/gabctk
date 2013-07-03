@@ -1,8 +1,8 @@
 ﻿[OPTIONS]
-Title=gabc2midi
-Compiled file=..\gabc2midi.chm
+Title=gabc2mid
+Compiled file=..\gabc2mid.chm
 Error log file=
-Default topic=gabc2midi.htm
+Default topic=gabc2mid.htm
 Language=0x0000 <unknown>
 Full text search stop list file=
 Contents file=
@@ -23,5 +23,5 @@ Compatibility=1.1 or later
 basic="",,,,,,,,,0x00042100,264,0x0010387E,[25,25,517,537],,,,0,-1,0,0
 
 [FILES]
-gabc2midi.htm
+gabc2mid.htm
 

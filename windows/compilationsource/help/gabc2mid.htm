@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head><title>gabc2midi.htm</title>
+<html><head><title>gabc2mid.htm</title>
 <meta http-equiv="Content-Style-Type" content="text/css">
 <style type="text/css"><!--
 body {
@@ -137,6 +137,28 @@ a.rvts22, span.rvts22
  text-decoration: underline;
 }
 a.rvts22:hover { color: #ff8080; }
+span.rvts23
+{
+ font-size: 11pt;
+ font-weight: bold;
+}
+span.rvts24
+{
+ font-family: 'Courier New', 'Courier', monospace;
+ color: #5c7db2;
+}
+span.rvts25
+{
+ font-family: 'Courier New', 'Courier', monospace;
+ color: #5c7db2;
+ background-color: #ebebeb;
+}
+span.rvts26
+{
+ font-size: 12pt;
+ font-weight: bold;
+ color: #ff0000;
+}
 /* ========== Para Styles ========== */
 p,ul,ol /* Paragraph Style */
 {
@@ -165,9 +187,9 @@ p,ul,ol /* Paragraph Style */
 --></style>
 </head>
 <body>
-<p class=rvps2><span class=rvts13>gabc2midi</span></p>
+<p class=rvps2><span class=rvts13>gabc2mid</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
-<p class=rvps3><span class=rvts8>gabc2midi.exe</span></p>
+<p class=rvps3><span class=rvts23>gabc2mid</span><span class=rvts8>.exe</span></p>
 <p class=rvps3><span class=rvts6>version 1.3</span></p>
 <p class=rvps3><span class=rvts6>by Father Jacques Peron</span></p>
 <p class=rvps3><span class=rvts6>Windows binary (and chm help) compiled by Brother Gabriel-Marie</span></p>
@@ -195,18 +217,18 @@ p,ul,ol /* Paragraph Style */
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>This application extracts the code from the </span><span class=rvts11>gabc</span><span class=rvts6> file, reads the melody and produces a midi file from the results.</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
-<p class=rvps3><span class=rvts6>If you prefer a GUI for use with </span><span class=rvts8>gabc2midi</span><span class=rvts6>, be sure to check out </span><a class=rvts15 href="http://www.sspxusa.org/goodies/#greg">greg</a><span class=rvts6>.</span></p>
+<p class=rvps3><span class=rvts6>If you prefer a GUI for use with </span><span class=rvts18>gabc2mid</span><span class=rvts6>, be sure to check out </span><a class=rvts15 href="http://www.sspxusa.org/goodies/#greg">greg</a><span class=rvts6>.</span></p>
 <hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
 <p class=rvps3><a name="Usage"></a>
 <span class=rvts14>Usage</span></p>
-<p class=rvps3><span class=rvts11>gabc2midi.exe -i [filename] [-o filename] [-t tempo] [-T filename]</span></p>
+<p class=rvps3>gabc2mid<span class=rvts11>.exe -i [filename] [-o filename] [-t tempo] [-T filename]</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>Examples:</span></p>
-<p class=rvps3><span class=rvts17>gabc2midi.exe -i path/to/source.gabc -o path/to/destination.midi -t tempo -T path/to/exportfile.txt</span></p>
-<p class=rvps3><span class=rvts17>gabc2midi.exe -i c:/scores/myscore.gabc -o c:/scores/midi/mymidi.midi</span></p>
+<p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe -i path/to/source.gabc -o path/to/destination.midi -t tempo -T path/to/exportfile.txt</span></p>
+<p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe -i c:/scores/myscore.gabc -o c:/scores/midi/mymidi.midi</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>or, simply:</span></p>
-<p class=rvps3><span class=rvts17>gabc2midi.exe [path/to/source.gabc]</span></p>
+<p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe [path/to/source.gabc]</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>You may specify only a single parameter being the path to the gabc file, in which case, a midi file will be produced in the same directory and using the same base name.</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
@@ -294,7 +316,7 @@ p,ul,ol /* Paragraph Style */
 <p class=rvps3><span class=rvts6>or you may post something to the gregorio mailing list:</span></p>
 <p class=rvps3><a class=rvts7 href="https://mail.gna.org/listinfo/gregorio-users">https://mail.gna.org/listinfo/gregorio-users</a></p>
 <p class=rvps3><a class=rvts7 href="https://mail.gna.org/listinfo/gregorio-users"><br></a></p>
-<p class=rvps3><span class=rvts9>home</span><span class=rvts9> page for gabc2midi</span></p>
+<p class=rvps3><span class=rvts9>home</span><span class=rvts9> page for </span><span class=rvts26>gabc2mid</span></p>
 <p class=rvps3><a class=rvts7 href="https://github.com/jperon/gabc2mid">https://github.com/jperon/gabc2mid</a></p>
 <p class=rvps3><a class=rvts7 href="https://github.com/jperon/gabc2mid"><br></a></p>
 <p class=rvps3><a class=rvts7 href="https://mail.gna.org/listinfo/gregorio-users"><br></a></p>
