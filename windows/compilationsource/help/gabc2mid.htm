@@ -206,7 +206,7 @@ p,ul,ol /* Paragraph Style */
 <p class=rvps3><span class=rvts6>by Father Jacques Peron</span></p>
 <p class=rvps3><span class=rvts6>Windows binary and English Documentation by Brother Gabriel-Marie</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
-<p class=rvps3><span class=rvts6>You can download the latest of the </span><a class=rvts15 href="\\saintmagnus\d$\inetpub\sspxusa\goodies\gabc2mid\gabc2mid.zip">Windows binary here</a><span class=rvts6>.</span></p>
+<p class=rvps3><span class=rvts6>You can download the latest of the </span><a class=rvts15 href="\\saintmagnus\d$\inetpub\sspxusa\goodies\gabc2mid\gabc2mid.zip">Windows binary here</a><span class=rvts6>.&nbsp; </span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>This little applicaion will create a midi file from a gabc score.</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
@@ -237,9 +237,12 @@ p,ul,ol /* Paragraph Style */
 <span class=rvts14>Usage</span></p>
 <p class=rvps3><span class=rvts20>gabc2mid</span><span class=rvts11>.exe -i [filename] [-o filename] [-t tempo] [-e filename] [-v] [-d]</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
+<p class=rvps3><span class=rvts6>Note that if you are using the original python script, you won't use </span><span class=rvts11>gabc2mid.exe</span><span class=rvts6> - you would use </span><span class=rvts11>gabc2mid.py</span><span class=rvts6>.</span></p>
+<p class=rvps3><span class=rvts6>If you have spaces in your filenames, make sure to enclose them in double-quotes.</span></p>
+<p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>Examples:</span></p>
 <p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe -i path/to/source.gabc -o path/to/destination.midi -t tempo -e path/to/exportfile.txt</span></p>
-<p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe -i c:/scores/myscore.gabc -o c:/scores/midi/mymidi.midi</span></p>
+<p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe -i c:/scores/myscore.gabc -o "c:/my scores/midi/mymidi.midi"</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6>or, simply:</span></p>
 <p class=rvps3><span class=rvts25>gabc2mid</span><span class=rvts17>.exe [path/to/source.gabc]</span></p>
@@ -276,7 +279,7 @@ p,ul,ol /* Paragraph Style */
 <tr valign=top>
 <td width=160 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts20>-e [file.ext]</span></p>
 </td>
-<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>export</span> - exports the gabc code to a text file (you can specify any extension you like)</p>
+<td width=580 style="border-color: #4f7ab0; border-style: solid;"><p><span class=rvts12>export</span> - exports the text portion of the gabc code to a text file (you can specify any extension you like)</p>
 </td>
 </tr>
 <tr valign=top>
@@ -290,19 +293,12 @@ p,ul,ol /* Paragraph Style */
 <p class=rvps3><span class=rvts6><br></span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
-<p class=rvps3><a name="Known Issues"></a>
-<span class=rvts14>Known Issues</span></p>
-<p class=rvps3><span class=rvts6>If notes are based on a key in the same brackets, they are not taken into account.&nbsp; </span><span class=rvts8>gabc2mid</span><span class=rvts6> will still try to create the midi file, however.</span></p>
-<p class=rvps3><span class=rvts6>Example: </span><span class=rvts28>Pó (c3 ** ** eh) pu (g) read (h) If (hi) on (hgh.) * (;)</span></p>
-<p class=rvps3><span class=rvts6>Workaround: </span><span class=rvts28>(c3) Pó (eh) pu (g) read (h) If (hi) on (hgh.) * (;)</span></p>
-<p class=rvps3><span class=rvts6><br></span></p>
-<hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
 <p><span class=rvts6><br></span></p>
 <p class=rvps3><a name="License"></a>
 <span class=rvts14>License</span></p>
 <p class=rvps3><span class=rvts6>By using this program you thereby agree to the terms of this license agreement.&nbsp; You use this application at your own risk, and assume the entire responsibility of it use - that means that if it does something dastardly to your computer, it is your own fault.&nbsp; However, to reassure you, know that the authour has tested it and uses it himself.</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
-<p class=rvps3><span class=rvts6>This application may be used for any use private or commercial, and without any fees.&nbsp; You may distribute it however you like as long as you don't charge for it, and as long as it remains unchanged, and is accompanied by this help file.</span></p>
+<p class=rvps3><span class=rvts6>This application may be used for any use private or commercial, and without any fees.&nbsp; You may distribute it however you like as long as it is accompanied by this help file.</span></p>
 <p class=rvps3><span class=rvts6><br></span></p>
 <hr style="height: 1px; color : #000000;  background-color : #000000; border-width : 0px;">
 <p><a name="History"></a>
