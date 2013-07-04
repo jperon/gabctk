@@ -3,6 +3,8 @@ gabc2mid
 
 Conversion de gabc en midi.
 
+[English Documentation](http://www.sspxusa.org/goodies/gabc2mid/)
+
 Gabc
 ----
 
