@@ -38,12 +38,14 @@ def gabc2mid(arguments):
     except IndexError: aide(2)
     try: gabc = Gabc(entree.contenu)
     except FileNotFoundError: aide(3)
-    if debug: print(gabc.partition)
     partition = Partition(gabc = gabc.musique, transposition = transposition)
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
         + Note(hauteur = partition.tessiture['maximum']).nom)
-    if debug: print(partition.texte)
+    if debug:
+        print(gabc.partition)
+        print(partition.texte)
+        print(partition.notes)
     midi = Midi(partition.notes,tempo)
     midi.ecrire(sortie.chemin)
     try: texte.ecrire(partition.texte)
