@@ -10,8 +10,9 @@ def gabc2mid(arguments):
     entree = sortie = ''
     debug = False
     transposition = ''
+    alertes = corrections = []
     try:
-      opts, args = getopt.getopt(arguments,"hi:o:e:t:d:v",["help","entree=","sortie=","export=","tempo=","transposition=","verbose"])
+        opts, args = getopt.getopt(arguments,"hi:o:e:t:d:a:v",["help","entree=","sortie=","export=","tempo=","transposition=","alerter=","verbose"])
     except getopt.GetoptError:
         aide(1)
     for opt, arg in opts:
@@ -28,6 +29,8 @@ def gabc2mid(arguments):
             tempo = int(arg)
         elif opt in ("-d", "--transposition"):
             transposition = int(arg)
+        elif opt in ("-a", "--alerter"):
+            alertes.append(arg)
         elif opt in ("-v", "--verbose"):
             debug = True
     try:
@@ -48,6 +51,8 @@ def gabc2mid(arguments):
         print(partition.notes)
     midi = Midi(partition.notes,tempo)
     midi.ecrire(sortie.chemin)
+    try: partition.verifier(alertes)
+    except: pass
     try: texte.ecrire(partition.texte)
     except UnboundLocalError: pass
 
@@ -189,7 +194,11 @@ class Partition:
             if minimum == 0 or note.hauteur < minimum: minimum = note.hauteur
             if note.hauteur > maximum: maximum = note.hauteur
         return {'minimum': minimum, 'maximum': maximum}
-        
+    def verifier(self,alertes):
+        for alerte in alertes:
+            if alerte in self.texte:
+                print("!!! " + alerte + " !!!")
+
 class Note:
     def __init__(self,**parametres):
         self.b = ''
