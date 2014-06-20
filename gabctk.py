@@ -53,13 +53,17 @@ def gabc2mid(commande,arguments):
         elif opt in ("-v", "--verbose"):
             debug = True
     # Si les arguments n'ont pas été saisis explicitement,
-    # considérer le premier comme étant le gabc en entrée,
-    # et donner à la sortie le même nom en changeant l'extension.
+    # considérer le premier comme étant le gabc en entrée ;
+    # en l'absence de deuxième, donner à la sortie le même nom,
+    # en changeant l'extension.
     try:
         if entree == '':
             entree = FichierTexte(arguments[0])
         if sortie == '':
-            sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
+            try:
+                sortie = FichierTexte(arguments[1])
+            except IndexError:
+                sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
     # S'il n'y a aucun argument, afficher l'aide.
     except IndexError: aide(commande,'aucun argument',0)
     # Extraire le contenu du gabc.
