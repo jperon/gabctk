@@ -24,7 +24,7 @@ def gabc2mid(commande,arguments):
                                 [
                                     "help",                             # Aide
                                     "entree=",                          # Fichier gabc
-                                    "sortie=",                          # Fichier midi
+                                    "sortie=",                          # Fichier MIDI
                                     "export=",                          # Fichier texte
                                     "tempo=",                           # Tempo de la musique
                                     "transposition=",                   # Transposition
@@ -93,7 +93,8 @@ def gabc2mid(commande,arguments):
     # Créer le fichier midi
     midi = Midi(partition.musique,tempo)
     midi.ecrire(sortie.chemin)
-    # S'assurer de la présence de caractères "alertes"
+    # S'assurer de la présence de certains caractères,
+    # à la demande de l'utilisateur.
     try: partition.verifier(alertes)
     except: pass
     # Si l'utilisateur l'a demandé,
