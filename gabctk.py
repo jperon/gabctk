@@ -65,7 +65,7 @@ def gabc2mid(arguments):
         aide('fichier inexistant',2)
     # Extraire la partition.
     partition = Partition(
-                        gabc = gabc.musique,
+                        gabc = gabc.partition,
                         transposition = transposition
                         )
     # Afficher la tessiture obtenue après transposition.
@@ -75,9 +75,9 @@ def gabc2mid(arguments):
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
         ## la partition gabc (sans les en-têtes)
-        print(gabc.partition)
+        print(gabc.contenu)
         ## la liste des couples (clé, signe gabc)
-        print(gabc.musique)
+        print(gabc.partition)
         ## les paroles seules
         print(partition.texte)
         ## les notes seules
@@ -110,28 +110,28 @@ def aide(erreur,code):
     sys.exit(code)
 
 class Gabc:
-    """Contenu du fichier gabc"""
-    def __init__(self,contenu):
-        self.contenu = contenu
+    """Description du fichier gabc"""
+    def __init__(self,code):
+        self.code = code
     @property
-    def partition(self):
+    def contenu(self):
         '''Partition gabc sans les en-têtes'''
-        resultat = self.contenu
+        resultat = self.code
         regex = re.compile('%%\n')
         resultat = regex.split(resultat)[1]
         resultat = re.sub('%.*\n','',resultat)
         resultat = re.sub('\n',' ',resultat)
         return resultat
     @property
-    def musique(self):
+    def partition(self):
         '''Liste de couples (clé, signe gabc)'''
         resultat = []
-        partition = self.partition
+        contenu = self.contenu
         # Recherche des clés
         regex = re.compile('[cf][b]?[1234]')
-        cles = regex.findall(partition)
+        cles = regex.findall(contenu)
         # Découpage de la partition en fonction des changements de clé
-        partiestoutes = regex.split(partition)
+        partiestoutes = regex.split(contenu)
         parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
         # Définition des couples (clé, signe)
         for i in range(len(cles)):
