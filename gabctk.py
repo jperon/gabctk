@@ -6,15 +6,30 @@ import re
 from midiutil.MidiFile3 import MIDIFile
 
 def gabc2mid(arguments):
-    tempo = 165
-    entree = sortie = ''
+    """Fonction maîtresse"""
+    # Initialisation des variables correspondant aux paramètres.
     debug = False
-    transposition = ''
+    tempo = 165
+    entree = sortie = transposition = ''
     alertes = corrections = []
+    # Analyse des arguments de la ligne de commande
     try:
-        opts, args = getopt.getopt(arguments,"hi:o:e:t:d:a:v",["help","entree=","sortie=","export=","tempo=","transposition=","alerter=","verbose"])
+        opts, args = getopt.getopt(
+                                arguments,
+                                "hi:o:e:t:d:a:v",
+                                [
+                                    "help",                             # Aide
+                                    "entree=",                          # Fichier gabc
+                                    "sortie=",                          # Fichier midi
+                                    "export=",                          # Fichier texte
+                                    "tempo=",                           # Tempo de la musique
+                                    "transposition=",                   # Transposition
+                                    "alerter=",                         # Caractères à signaler s'ils se trouvent dans le gabc
+                                    "verbose"                           # Verbosité de la sortie
+                                ]
+                                )
     except getopt.GetoptError:
-        aide(1)
+        aide('Argument invalide',1)
     for opt, arg in opts:
         if opt == '-h':
             aide(0)
@@ -33,38 +48,74 @@ def gabc2mid(arguments):
             alertes.append(arg)
         elif opt in ("-v", "--verbose"):
             debug = True
+    # Si les arguments n'ont pas été saisis explicitement,
+    # considérer le premier comme étant le gabc en entrée,
+    # et donner à la sortie le même nom en changeant l'extension.
     try:
         if entree == '':
             entree = FichierTexte(arguments[0])
         if sortie == '':
             sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
-    except IndexError: aide(2)
+    # S'il n'y a aucun argument, afficher l'aide.
+    except IndexError: aide('aucun argument',0)
+    # Extraire le contenu du gabc.
     try: gabc = Gabc(entree.contenu)
-    except FileNotFoundError: aide(3)
-    partition = Partition(gabc = gabc.musique, transposition = transposition)
+    # Si le gabc n'existe pas, afficher l'aide.
+    except FileNotFoundError:
+        aide('fichier inexistant',2)
+    # Extraire la partition.
+    partition = Partition(
+                        gabc = gabc.musique,
+                        transposition = transposition
+                        )
+    # Afficher la tessiture obtenue après transposition.
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
         + Note(hauteur = partition.tessiture['maximum']).nom)
+    # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
+        ## la partition gabc (sans les en-têtes)
         print(gabc.partition)
+        ## la liste des couples (clé, signe gabc)
+        print(gabc.musique)
+        ## les paroles seules
         print(partition.texte)
-        print(partition.notes)
+        ## les notes seules
+        print([note.nom for note in partition.notes])
+    # Créer le fichier midi
     midi = Midi(partition.notes,tempo)
     midi.ecrire(sortie.chemin)
+    # S'assurer de la présence de caractères "alertes"
     try: partition.verifier(alertes)
     except: pass
+    # Si l'utilisateur l'a demandé,
+    # écrire les paroles dans un fichier texte
     try: texte.ecrire(partition.texte)
     except UnboundLocalError: pass
 
-def aide(code):
-    print('gabc2mid.py -i <input.gabc> [-o <output.mid>] [-e <texte.txt>] [-t <tempo>] [-v]')
+def aide(erreur,code):
+    """Affichage de l'aide"""
+    # Tenir compte du message propre à chaque erreur.
+    print('Erreur : '
+            + erreur + '\n'
+            + '''Usage :
+            gabctk.py'''
+            + '-i <input.gabc> '
+            + '[-o <output.mid>] '
+            + '[-e <texte.txt>] '
+            + '[-t <tempo>] '
+            + '[-v]''')
+    # Renvoyer le code correspondant à l'erreur,
+    # pour interagir avec d'autres programmes.
     sys.exit(code)
 
 class Gabc:
+    """Contenu du fichier gabc"""
     def __init__(self,contenu):
         self.contenu = contenu
     @property
     def partition(self):
+        '''Partition gabc sans les en-têtes'''
         resultat = self.contenu
         regex = re.compile('%%\n')
         resultat = regex.split(resultat)[1]
@@ -73,24 +124,32 @@ class Gabc:
         return resultat
     @property
     def musique(self):
+        '''Liste de couples (clé, signe gabc)'''
         resultat = []
         partition = self.partition
+        # Recherche des clés
         regex = re.compile('[cf][b]?[1234]')
         cles = regex.findall(partition)
+        # Découpage de la partition en fonction des changements de clé
         partiestoutes = regex.split(partition)
         parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
+        # Définition des couples (clé, signe)
         for i in range(len(cles)):
             cle = cles[i]
             try:
                 for n in parties[i]:
                     resultat.append((cle,n))
+            # Si, si, c'est arrivé…
             except IndexError:
-                sys.stderr.write("Il semble que vous ayez des changements de clé sans notes subséquentes. Le résultat n'est pas garanti.\n")
+                sys.stderr.write("Il semble que vous ayez des "
+                    + "changements de clé sans notes subséquentes. "
+                    + "Le résultat n'est pas garanti.\n")
         return resultat
 
 class Partition:
+    """Partition de musique"""
     def __init__(self,**parametres):
-        self.b = ''
+        self.b = ''                                                     # A priori,  pas de bémol à la clé.
         transposition = None
         if 'partition' in parametres:
             self.notes = parametres['pitches']
@@ -103,6 +162,9 @@ class Partition:
             except ValueError: pass
         self.transposer(transposition)
     def g2p(self,gabc):
+        """Analyser le code gabc pour en sortir :
+            − la mélode (liste d'objets notes) ;
+            − le texte (chaîne de caractères."""
         gamme = "abcdefghijklm"
         episeme = '_'
         point = '.'
@@ -162,7 +224,8 @@ class Partition:
                         musique = 0
                     if signe[1] == '[':
                         musique = 2
-                    if neumeencours == neume and notes[-1].duree < notes[-2].duree:
+                    if neumeencours == neume \
+                    and notes[-1].duree < notes[-2].duree:
                         notes[-1].duree = notes[-2].duree
             elif musique == 0:
                 if signe[1] == '(':
@@ -183,16 +246,20 @@ class Partition:
                     musique = 1
         return notes, texte
     def transposer(self,transposition):
-        if transposition == None: t = 66 - int(sum(self.tessiture.values())/2)
+        if transposition == None:
+            t = 66 - int(sum(self.tessiture.values())/2)
         else: t = transposition
         for i in range(len(self.notes)):
             self.notes[i].hauteur += t
     @property
     def tessiture(self):
+        """Notes extrêmes de la mélodie"""
         minimum = maximum = 0
         for note in self.notes:
-            if minimum == 0 or note.hauteur < minimum: minimum = note.hauteur
-            if note.hauteur > maximum: maximum = note.hauteur
+            if minimum == 0 or note.hauteur < minimum:
+                minimum = note.hauteur
+            if note.hauteur > maximum:
+                maximum = note.hauteur
         return {'minimum': minimum, 'maximum': maximum}
     def verifier(self,alertes):
         for alerte in alertes:
@@ -200,6 +267,7 @@ class Partition:
                 print("!!! " + alerte + " !!!")
 
 class Note:
+    """Note de musique"""
     def __init__(self,**parametres):
         self.b = ''
         if 'bemol' in parametres:
@@ -214,7 +282,18 @@ class Note:
     def nom(self):
         o = int(self.hauteur / 12) - 1
         n = int(self.hauteur % 12)
-        return ('Do','Do#','Ré','Ré#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si')[n] + str(o)
+        return ('Do',
+                'Do#',
+                'Ré',
+                'Ré#',
+                'Mi',
+                'Fa',
+                'Fa#',
+                'Sol',
+                'Sol#',
+                'La',
+                'La#',
+                'Si')[n] + str(o)
     def g2p(self,gabc):
         la = 57
         si = la + 2
@@ -230,14 +309,14 @@ class Note:
             si = la + 1
         note = gabc[1]
         decalage = {
-            "c4": 0,
-            "c3": 2,
-            "c2": 4,
-            "c1": 6,
-            "f4": 3,
-            "f3": 5,
-            "f2": 0,
-            "f1": 2
+                "c4": 0,
+                "c3": 2,
+                "c2": 4,
+                "c1": 6,
+                "f4": 3,
+                "f3": 5,
+                "f2": 0,
+                "f1": 2
         }
         gamme = (la, si, do, re, mi, fa, sol)
         i = decalage[cle] - 1
@@ -260,6 +339,7 @@ class Note:
         return hauteur,duree
 
 class Midi:
+    """Musique midi"""
     def __init__(self,partition,tempo):
         piste = 0
         temps = 0
@@ -272,7 +352,12 @@ class Midi:
             pitch = note.hauteur
             duree = note.duree
             volume = 127
-            self.sortieMidi.addNote(piste,channel,pitch,temps,duree,volume)
+            self.sortieMidi.addNote(piste,
+                                    channel,
+                                    pitch,
+                                    temps,
+                                    duree,
+                                    volume)
             temps += duree
     def ecrire(self,chemin):
         binfile = open(chemin, 'wb')
@@ -280,12 +365,14 @@ class Midi:
         binfile.close()
 
 class Fichier:
+    """Gestion des entrées/sorties fichier"""
     def __init__(self,chemin):
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
         self.chemin = chemin
 
 class FichierTexte:
+    """Gestion des fichiers texte"""
     def __init__(self,chemin):
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
