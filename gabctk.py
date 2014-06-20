@@ -109,6 +109,8 @@ def aide(commande,erreur,code):
             + '[-o <output.mid>] '
             + '[-e <texte.txt>] '
             + '[-t <tempo>] '
+            + '[-d <transposition>] '
+            + '[-a <alertes>] '
             + '[-v]''')
     # Renvoyer le code correspondant à l'erreur,
     # pour interagir avec d'autres programmes.
