@@ -16,7 +16,7 @@ def gabc2mid(commande,arguments):
     tempo = 165
     entree = sortie = transposition = ''
     alertes = corrections = []
-    # Analyse des arguments de la ligne de commande
+    # Analyse des arguments de la ligne de commande.
     try:
         opts, args = getopt.getopt(
                                 arguments,
@@ -82,15 +82,15 @@ def gabc2mid(commande,arguments):
         + Note(hauteur = partition.tessiture['maximum']).nom)
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
-        ## la partition gabc (sans les en-têtes)
+        ## la partition gabc (sans les en-têtes) ;
         print(gabc.contenu)
-        ## la liste des couples (clé, signe gabc)
+        ## la liste des couples (clé, signe gabc) ;
         print(gabc.partition)
-        ## les paroles seules
+        ## les paroles seules ;
         print(partition.texte)
-        ## les notes seules
+        ## les notes seules.
         print([note.nom for note in partition.musique])
-    # Créer le fichier midi
+    # Créer le fichier midi.
     midi = Midi(partition.musique,tempo)
     midi.ecrire(sortie.chemin)
     # S'assurer de la présence de certains caractères,
@@ -98,7 +98,7 @@ def gabc2mid(commande,arguments):
     try: partition.verifier(alertes)
     except: pass
     # Si l'utilisateur l'a demandé,
-    # écrire les paroles dans un fichier texte
+    # écrire les paroles dans un fichier texte.
     try: texte.ecrire(partition.texte)
     except UnboundLocalError: pass
 
@@ -139,13 +139,13 @@ class Gabc:
         '''Liste de couples (clé, signe gabc)'''
         resultat = []
         contenu = self.contenu
-        # Recherche des clés
+        # Recherche des clés.
         regex = re.compile('[cf][b]?[1234]')
         cles = regex.findall(contenu)
-        # Découpage de la partition en fonction des changements de clé
+        # Découpage de la partition en fonction des changements de clé.
         partiestoutes = regex.split(contenu)
         parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
-        # Définition des couples (clé, signe)
+        # Définition des couples (clé, signe).
         for i in range(len(cles)):
             cle = cles[i]
             try:
@@ -167,21 +167,21 @@ class Partition:
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
         # Cas où l'instance de classe est initialisée avec le code gabc
-        # (cas le plus courant)
+        # (cas le plus courant).
         if 'gabc' in parametres:
             self.musique,self.texte = self.g2p(parametres['gabc'])
         # Si l'instance de classe est initialisée avec l'ensemble des
-        # notes (pour tessiture ou transposition)
+        # notes (pour tessiture ou transposition).
         if 'partition' in parametres:
             self.musique = parametres['pitches']
         # A priori, pas de transposition manuelle
-        # (elle sera alors calculée automatiquement)
+        # (elle sera alors calculée automatiquement).
         transposition = None
-        # Si transposition définie, en tenir compte
+        # Si transposition définie, en tenir compte.
         if 'transposition' in parametres:
             try: transposition = int(parametres['transposition'])
             except ValueError: pass
-        # Effectuer la transposition
+        # Effectuer la transposition.
         self.transposer(transposition)
     def g2p(self,gabc):
         """Analyser le code gabc pour en sortir :
@@ -201,7 +201,7 @@ class Partition:
         bemol = "x"
         becarre = "y"
         coupures = '/ '
-        # Initialisation des variables
+        # Initialisation des variables.
         notes = []
         b = '' + self.b
         mot = 0
@@ -217,7 +217,7 @@ class Partition:
         musique = 0
         for i in range(len(gabc)):
             signe = gabc[i]
-            # Traitement des notes de musique
+            # Traitement des notes de musique.
             if musique == 1:
                 if signe[1].lower() in gabcnotes:
                     j = 0
@@ -237,7 +237,7 @@ class Partition:
                     if s > 1:
                         note = Note(gabc = memoire, bemol = b)
                         notes.append(note)
-                # Durées
+                # Durées.
                 elif signe[1] == episeme:
                     neumeencours = neume
                     j -= 1
@@ -247,7 +247,7 @@ class Partition:
                     notes[j].duree = DUREE_POINT
                 elif signe[1] == quilisma:
                     notes[-2].duree = DUREE_AVANT_QUILISMA
-                # Altérations
+                # Altérations.
                 elif signe[1] == bemol:
                     b = b + memoire[1]
                     notes = notes[:-1]
@@ -286,13 +286,13 @@ class Partition:
                     if signe[1] == '[':
                         musique = 2
                         print("Commande personnalisée ignorée")
-            # Traitement du texte
+            # Traitement du texte.
             elif musique == 0:
                 if signe[1] == '(':
                     musique = 1
                     neume += 1
                 # Ignorer les accolades
-                # (qui servent à centrer les notes sur une lettre)
+                # (qui servent à centrer les notes sur une lettre).
                 elif signe[1] in ('{', '}'): pass
                 else:
                     # Le changement de mot en grégorien implique
@@ -319,7 +319,7 @@ class Partition:
         if transposition == None:
             t = 66 - int(sum(self.tessiture.values())/2)
         else: t = transposition
-        # Transposition effective
+        # Transposition effective.
         for i in range(len(self.musique)):
             self.musique[i].hauteur += t
     @property
@@ -371,7 +371,7 @@ class Note:
                 'Si')[n] + str(o)
     def g2p(self,gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
-        # Définition de la gamme
+        # Définition de la gamme.
         la = 57                 # Le nombre correspond au "pitch" MIDI.
         si = la + 2
         do = la + 3
@@ -427,11 +427,11 @@ class Midi:
         piste = 0
         temps = 0
         self.sortieMidi = MIDIFile(1)
-        # Nom de la piste
+        # Nom de la piste.
         self.sortieMidi.addTrackName(piste,temps,"Gregorien")
-        # Tempo
+        # Tempo.
         self.sortieMidi.addTempo(piste,temps, tempo)
-        # Instrument (74 : flûte)
+        # Instrument (74 : flûte).
         self.sortieMidi.addProgramChange(piste,0,temps,74)
         # À partir des propriétés de la note, création des évènements
         # MIDI.
