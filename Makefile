@@ -1,2 +1,2 @@
 run:
-	python gabc2mid
+	python gabctk
