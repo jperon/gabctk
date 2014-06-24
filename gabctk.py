@@ -185,8 +185,11 @@ class Partition:
         self.transposer(transposition)
     def g2p(self,gabc):
         """Analyser le code gabc pour en sortir :
-            − la mélode (liste d'objets notes) ;
+            − la mélodie (liste d'objets notes) ;
             − le texte (chaîne de caractères)."""
+        ### Remarque : la traduction en musique a nécessité certains
+        ### choix d'interprétation, qui n'engagent que l'auteur de ce
+        ### script…
         # Pour plus de clarté, définition de variables correspondant
         # aux différentes familles de signes.
         # Certains signes ne sont pas pris en compte pour le moment :
@@ -379,7 +382,8 @@ class Note:
         mi = re + 2
         fa = mi + 1
         sol = fa + 2
-        gamme = (la, si, do, re, mi, fa, sol)
+        gammehauteurs = (la, si, do, re, mi, fa, sol)
+        gammenotes = ('la','si','do','re','mi','fa','sol')
         gabcnotes = "abcdefghijklm"
         # Analyse de la clé : les lettres du gabc définissant une
         # position sur la portée et non une hauteur de note, la note
@@ -402,21 +406,31 @@ class Note:
         i = decalage[cle] - 1
         o = 0
         if cle == 'f3': o = -12
+        hauteurs = {}
         notes = {}
         for j in gabcnotes:
             try:
                 i += 1
-                notes[j] = gamme[i] + o
+                hauteurs[j] = gammehauteurs[i] + o
+                notes[j] = gammenotes[i]
             except IndexError:
                 i -= 7
                 o += 12
-                notes[j] = gamme[i] + o
+                hauteurs[j] = gammehauteurs[i] + o
+                notes[j] = gammenotes[i]
         # Par défaut, la durée est à 1 : elle pourra être modifiée par
         # la suite, s'il se rencontre un épisème, un point, etc.
         duree = 1
         lettre = gabc[1].lower()
-        hauteur = notes[lettre]
+        hauteur = hauteurs[lettre]
+        # Si la note est altérée par un bémol, l'abaisser d'un demi-ton.
+        # N.B : le grégorien n'admet que le si bémol, mais il n'y avait
+        # pas de raison de se limiter à ce dernier. Cependant, on
+        # renvoie un avertissement si un autre bémol est rencontré, car
+        # il peut s'agir d'une erreur.
         if lettre in self.b:
+            if notes[lettre] != 'si' :
+                print(notes[lettre] + ' bémol rencontré')
             hauteur -= 1
         return hauteur,duree
 
