@@ -146,8 +146,7 @@ class Gabc:
         partiestoutes = regex.split(contenu)
         parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
         # Définition des couples (clé, signe).
-        for i in range(len(cles)):
-            cle = cles[i]
+        for i,cle in enumerate(cles):
             try:
                 for n in parties[i]:
                     resultat.append((cle,n))
@@ -388,11 +387,24 @@ class Note:
         # Analyse de la clé : les lettres du gabc définissant une
         # position sur la portée et non une hauteur de note, la note
         # correspondant à une lettre dépend de la clé.
+        # N.B : c1, f1 et f2 n'existent pas normalement, mais cela ne
+        # nous regarde pas !
         cle = gabc[0]
-        # On n'a pas besoin de savoir s'il y a bémol à la clé pour
-        # déterminer la hauteur des notes.
+        # Traitement des bémols à la clé.
         if len(cle) == 3:
             cle = cle[0] + cle[2]
+            bemol = {
+                    "c4": 'bi',
+                    "c3": 'g',
+                    "c2": 'el',
+                    "c1": 'cj',
+                    "f4": 'fm',
+                    "f3": 'dk',
+                    "f2": 'bi',
+                    "f1": 'g'
+                    }
+            if bemol[cle] not in self.b:
+                self.b += bemol[cle]
         decalage = {
                 "c4": 0,
                 "c3": 2,
