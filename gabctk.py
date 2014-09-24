@@ -174,6 +174,12 @@ class Partition:
         # notes (pour tessiture ou transposition).
         if 'partition' in parametres:
             self.musique = parametres['pitches']
+        # Définition de la tonalité : a priori, ut majeur, mais la
+        # transposition et la conversion en lilypond peuvent compliquer
+        # les choses.
+        if 'tonalite' in parametres:
+            self.tonalite = parametres['tonalite']
+        else: self.tonalite = 'CM'
         # A priori, pas de transposition manuelle
         # (elle sera alors calculée automatiquement).
         transposition = None
@@ -358,6 +364,7 @@ class Note:
             self.hauteur,self.duree = self.g2p(parametres['gabc'])
     @property
     def nom(self):
+        """Renvoi du nom "canonique" de la note."""
         o = int(self.hauteur / 12) - 1
         n = int(self.hauteur % 12)
         return ('Do',
@@ -372,6 +379,22 @@ class Note:
                 'La',
                 'La#',
                 'Si')[n] + str(o)
+    def ly(self):
+        """Renvoi du code lilypond correspondant à la note."""
+        o = int(self.hauteur / 12) - 1
+        n = int(self.hauteur % 12)
+        return ('c',
+                'cis',
+                'd',
+                'dis',
+                'e',
+                'f',
+                'fis',
+                'g',
+                'gis',
+                'a',
+                'ais',
+                'b')[n] + str(o)
     def g2p(self,gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
