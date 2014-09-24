@@ -165,6 +165,7 @@ class Partition:
         # S'il y a un bémol à la clé, en tenir compte.
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
+            parametres['tonalite'] = ('fa','M')
         # Cas où l'instance de classe est initialisée avec le code gabc
         # (cas le plus courant).
         if 'gabc' in parametres:
@@ -178,7 +179,7 @@ class Partition:
         # les choses.
         if 'tonalite' in parametres:
             self.tonalite = parametres['tonalite']
-        else: self.tonalite = 'CM'
+        else: self.tonalite = ('do','M')
         # A priori, pas de transposition manuelle
         # (elle sera alors calculée automatiquement).
         transposition = None
@@ -330,6 +331,20 @@ class Partition:
         # Transposition effective.
         for i in range(len(self.musique)):
             self.musique[i].hauteur += t
+        tonalites = {
+                    'do': 0,
+                    'dod': 1,
+                    're': 2,
+                    'red': 3,
+                    'mi': 4,
+                    'fa': 5,
+                    'fad': 6,
+                    'sol': 7,
+                    'sold': 8,
+                    'la': 9,
+                    'lad': 10,
+                    'si': 11
+                    }
     @property
     def tessiture(self):
         """Notes extrêmes de la mélodie"""
