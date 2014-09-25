@@ -165,11 +165,16 @@ class Partition:
         # S'il y a un bémol à la clé, en tenir compte.
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
-            parametres['tonalite'] = ('fa','M')
+            parametres['tonalite'] = ['fa','M']
         # Cas où l'instance de classe est initialisée avec le code gabc
         # (cas le plus courant).
         if 'gabc' in parametres:
             self.musique,self.texte = self.g2p(parametres['gabc'])
+            # Si bémol à la clé, adapter la tonalité (mais le bémol
+            # ainsi détecté sera traité dans la méthode g2p de la classe
+            # Note.
+            if len(parametres['gabc'][0][0]) == 3:
+                parametres['tonalite'] = ['fa','M']
         # Si l'instance de classe est initialisée avec l'ensemble des
         # notes (pour tessiture ou transposition).
         if 'partition' in parametres:
@@ -179,7 +184,7 @@ class Partition:
         # les choses.
         if 'tonalite' in parametres:
             self.tonalite = parametres['tonalite']
-        else: self.tonalite = ('do','M')
+        else: self.tonalite = ['do','M']
         # A priori, pas de transposition manuelle
         # (elle sera alors calculée automatiquement).
         transposition = None
@@ -331,20 +336,36 @@ class Partition:
         # Transposition effective.
         for i in range(len(self.musique)):
             self.musique[i].hauteur += t
-        tonalites = {
+        # Calcul de la nouvelle tonalité
+        tonalitesa = {
                     'do': 0,
-                    'dod': 1,
+                    'reb': 1,
                     're': 2,
-                    'red': 3,
+                    'mib': 3,
                     'mi': 4,
                     'fa': 5,
                     'fad': 6,
                     'sol': 7,
-                    'sold': 8,
+                    'lab': 8,
                     'la': 9,
-                    'lad': 10,
+                    'sib': 10,
                     'si': 11
                     }
+        tonalitesb = {
+                    0: 'do',
+                    1: 'reb',
+                    2: 're',
+                    3: 'mib',
+                    4: 'mi',
+                    5: 'fa',
+                    6: 'fad',
+                    7: 'sol',
+                    8: 'lab',
+                    9: 'la',
+                    10: 'sib',
+                    11: 'si'
+                    }
+        self.tonalite[0] = tonalitesb[(tonalitesa[self.tonalite[0]] + t)%12]
     @property
     def tessiture(self):
         """Notes extrêmes de la mélodie"""
@@ -356,6 +377,9 @@ class Partition:
                 minimum = note.hauteur
             if note.hauteur > maximum:
                 maximum = note.hauteur
+        #### TODO: voir pourquoi la bidouille abjecte qui suit est  ####
+        #### nécessaire…                                            ####
+        minimum += 1
         return {'minimum': minimum, 'maximum': maximum}
     def verifier(self,alertes):
         """Contrôle de la présence de certains caractères
