@@ -421,7 +421,8 @@ class Note:
         """Renvoi du code lilypond correspondant à la note."""
         o = int(self.hauteur / 12) - 1
         n = int(self.hauteur % 12)
-        return ('c',
+        # Nom de la note
+        note = ('c',
                 'cis',
                 'd',
                 'dis',
@@ -432,7 +433,16 @@ class Note:
                 'gis',
                 'a',
                 'ais',
-                'b')[n] + str(o)
+                'b')[n]
+        # Hauteur de la note :
+        # on prévoit de la1 à sol7, ce qui est plutôt large !
+        note += (",,",
+                ",",
+                "",
+                "'",
+                "''",
+                "'''",
+                "''''")[o]
     def g2p(self,gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
