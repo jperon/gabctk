@@ -64,6 +64,7 @@ def gabc2tk(commande,arguments):
                 sortie = FichierTexte(arguments[1])
             except IndexError:
                 sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
+                sortieLily = Fichier(re.sub('.gabc','.ly',arguments[0]))
     # S'il n'y a aucun argument, afficher l'aide.
     except IndexError: aide(commande,'aucun argument',0)
     # Extraire le contenu du gabc.
@@ -92,8 +93,10 @@ def gabc2tk(commande,arguments):
         ## les notes seules.
         print([note.nom for note in partition.musique])
     # Créer le fichier midi.
-    midi = Midi(partition.musique,tempo)
+    midi = Midi(partition,tempo)
     midi.ecrire(sortie.chemin)
+    lily = Lily(partition,tempo)
+    lily.ecrire(sortieLily.chemin)
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
     try: partition.verifier(alertes)
@@ -188,13 +191,14 @@ class Partition:
         else: self.tonalite = ['do','M']
         # A priori, pas de transposition manuelle
         # (elle sera alors calculée automatiquement).
-        transposition = None
+        self.transposition = None
         # Si transposition définie, en tenir compte.
         if 'transposition' in parametres:
-            try: transposition = int(parametres['transposition'])
+            try: self.transposition = int(parametres['transposition'])
             except ValueError: pass
-        # Effectuer la transposition.
-        self.transposer(transposition)
+        # Effectuer la transposition si nécessaire.
+        if self.transposition == None:
+            self.transposer()
 
 
     def g2p(self,gabc):
@@ -313,15 +317,15 @@ class Partition:
                     notes[-1].ly_ccl(premierenote)
                     premierenote = True
                     if signe[1] == ',':
-                        notes[-1].ly += ''' \\bar"'"'''
+                        notes[-1].ly += ''' \\bar"'"\n'''
                     if signe[1] == ';':
                         notes[-1].duree += .5
-                        notes[-1].ly += ''' \\bar "'"'''
+                        notes[-1].ly += ''' \\bar "'"\n'''
                     elif signe[1] == ':':
                         notes[-1].duree += 1
                         if ' \\bar "|"' in notes[-1].ly:
                             notes[-1].ly = notes[-1].ly.replace('|','||')
-                        else: notes[-1].ly += ' \\bar "|"'
+                        else: notes[-1].ly += ' \\bar "|"\n'
                 else:
                     # Dans le calcul des durées : la dernière note d'un
                     # neume n'est jamais plus courte que la pénultième.
@@ -375,14 +379,11 @@ class Partition:
         # La dernière double-barre est une double-barre conclusive.
         notes[-1].ly = notes[-1].ly.replace('||','|.')
         return notes, texte
-    def transposer(self,transposition):
-        """Transposition de la partition :
-            − ou bien suivant l'intervalle défini ;
-            − ou bien automatiquement sur une tessiture moyenne."""
+    def transposer(self):
+        """Transposition de la partition automatiquement
+        sur une tessiture moyenne."""
         # Calcul si nécessaire de la hauteur idéale.
-        if transposition == None:
-            t = 66 - int(sum(self.tessiture.values())/2)
-        else: t = transposition
+        self.transposition = 66 - int(sum(self.tessiture.values())/2)
         ## Transposition effective. MAJ : on laisse cela aux
         ## différentes classes traitant chaque sortie.
         #for i in range(len(self.musique)):
@@ -401,6 +402,9 @@ class Partition:
         #### TODO: voir pourquoi la bidouille abjecte qui suit est  ####
         #### nécessaire…                                            ####
         minimum += 1
+        if self.transposition:
+            minimum += self.transposition
+            maximum += self.transposition
         return {'minimum': minimum, 'maximum': maximum}
     def verifier(self,alertes):
         """Contrôle de la présence de certains caractères
@@ -567,9 +571,9 @@ class Midi:
         self.sortieMidi.addProgramChange(piste,0,temps,74)
         # À partir des propriétés de la note, création des évènements
         # MIDI.
-        for note in partition:
+        for note in partition.musique:
             channel = 0
-            pitch = note.hauteur
+            pitch = note.hauteur + partition.transposition
             duree = note.duree
             volume = 127
             self.sortieMidi.addNote(piste,
@@ -584,6 +588,46 @@ class Midi:
         binfile = open(chemin, 'wb')
         self.sortieMidi.writeFile(binfile)
         binfile.close()
+
+class Lily:
+    def __init__(self,partition,tempo):
+        transposition = (
+            "c,",
+            "des,",
+            "d,",
+            "ees,",
+            "e,",
+            "f,",
+            "fis,",
+            "g,",
+            "aes,",
+            "a,",
+            "bes,",
+            "b,",
+            "c",
+            "des",
+            "d",
+            "ees",
+            "e",
+            "f",
+            "fis",
+            "g",
+            "aes",
+            "a",
+            "bes",
+            "b",
+            "c")[(partition.transposition + 7)%14]
+        self.entete = '''{\\autoBeamOff\\transpose c ''' + transposition + ''' {
+        \\cadenzaOn
+        '''
+        self.conclusion = '''
+        }
+}
+        '''
+        self.musique = ' '.join(note.ly for note in partition.musique)
+    def ecrire(self,chemin):
+        sortie = FichierTexte(chemin)
+        sortie.ecrire(self.entete + self.musique + self.conclusion)
 
 class Fichier:
     """Gestion des entrées/sorties fichier"""
