@@ -195,8 +195,8 @@ class Partition:
             except ValueError: pass
         # Effectuer la transposition.
         self.transposer(transposition)
-        
-        
+
+
     def g2p(self,gabc):
         """Analyser le code gabc pour en sortir :
             − la mélodie (liste d'objets notes) ;
@@ -383,9 +383,10 @@ class Partition:
         if transposition == None:
             t = 66 - int(sum(self.tessiture.values())/2)
         else: t = transposition
-        # Transposition effective.
-        for i in range(len(self.musique)):
-            self.musique[i].hauteur += t
+        ## Transposition effective. MAJ : on laisse cela aux
+        ## différentes classes traitant chaque sortie.
+        #for i in range(len(self.musique)):
+        #    self.musique[i].hauteur += t
     @property
     def tessiture(self):
         """Notes extrêmes de la mélodie"""
