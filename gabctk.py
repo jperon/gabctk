@@ -9,7 +9,7 @@ import os,sys,getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
 
-def gabc2mid(commande,arguments):
+def gabc2tk(commande,arguments):
     """Fonction maîtresse"""
     # Initialisation des variables correspondant aux paramètres.
     debug = False
@@ -76,6 +76,7 @@ def gabc2mid(commande,arguments):
                         gabc = gabc.partition,
                         transposition = transposition
                         )
+    print(' '.join(note.ly for note in partition.musique))
     # Afficher la tessiture obtenue après transposition.
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
@@ -194,13 +195,15 @@ class Partition:
             except ValueError: pass
         # Effectuer la transposition.
         self.transposer(transposition)
+        
+        
     def g2p(self,gabc):
         """Analyser le code gabc pour en sortir :
             − la mélodie (liste d'objets notes) ;
             − le texte (chaîne de caractères)."""
-        ### Remarque : la traduction en musique a nécessité certains
-        ### choix d'interprétation, qui n'engagent que l'auteur de ce
-        ### script…
+        ## Remarque : la traduction en musique a nécessité certains
+        ## choix d'interprétation, qui n'engagent que l'auteur de ce
+        ## script…
         # Pour plus de clarté, définition de variables correspondant
         # aux différentes familles de signes.
         # Certains signes ne sont pas pris en compte pour le moment :
@@ -222,6 +225,9 @@ class Partition:
         texte = ''
         neume = 0
         neumeencours = ''
+        premierenote = True
+        debutneume = True
+        neumeouvert = False
         # La variable musique est un drapeau :
         # 0 indique que l'on est dans le texte ;
         # 1 indique que l'on est dans un neume, entre deux parenthèses ;
@@ -238,6 +244,15 @@ class Partition:
                     s = 0
                     note = Note(gabc = signe, bemol = b)
                     notes.append(note)
+                    # Si la note est la première d'un élément
+                    # neumatique, commencer la ligature.
+                    if premierenote:
+                        notes[-1].ly += '['
+                        premierenote = False
+                    if debutneume:
+                        notes[-1].ly += '('
+                        neumeouvert = True
+                        debutneume = False
                     # La variable memoire sert à garder le souvenir de
                     # la hauteur de note, afin de traiter certains cas
                     # particuliers (altérations, distrophas…).
@@ -256,17 +271,25 @@ class Partition:
                     neumeencours = neume
                     j -= 1
                     notes[j].duree = DUREE_EPISEME
+                    notes[j].ly += '--'
                 elif signe[1] == point:
                     j -= 1
                     notes[j].duree = DUREE_POINT
+                    notes[j].ly = notes[j].ly.replace('8','4')
                 elif signe[1] == quilisma:
                     notes[-2].duree = DUREE_AVANT_QUILISMA
+                    if '--' not in notes[-2].ly: notes[-2].ly += '--'
+                    notes[-1].ly += '\prall'
                 # Altérations.
                 elif signe[1] == bemol:
                     b = b + memoire[1]
+                    if '[' in notes[-1].ly: premierenote = True
+                    if '(' in notes[-1].ly: debutneume = True
                     notes = notes[:-1]
                 elif signe[1] == becarre:
                     re.sub(memoire[1],'',b)
+                    if '[' in notes[-1].ly: premierenote = True
+                    if '(' in notes[-1].ly: debutneume = True
                     notes = notes[:-1]
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
@@ -276,15 +299,29 @@ class Partition:
                 elif signe[1] in coupures:
                     if notes[-1].duree < notes[-2].duree:
                         notes[-1].duree = notes[-2].duree
+                    ### Discutable : faut-il couper le "neume" en
+                    ### notation moderne (ce que ne fait pas
+                    ### Solesmes) ?
+                    notes[-1].ly_ccl(premierenote)
+                    premierenote = True
                 # Une barre annule les altérations accidentelles,
                 # et provoque un "posé", d'où léger rallongement de la
                 # note précédente.
+                ### TODO: les barres en Lilypond seraient à revoir.
                 elif signe[1] in barres:
                     b = '' + self.b
+                    notes[-1].ly_ccl(premierenote)
+                    premierenote = True
+                    if signe[1] == ',':
+                        notes[-1].ly += ''' \\bar"'"'''
                     if signe[1] == ';':
                         notes[-1].duree += .5
+                        notes[-1].ly += ''' \\bar "'"'''
                     elif signe[1] == ':':
                         notes[-1].duree += 1
+                        if ' \\bar "|"' in notes[-1].ly:
+                            notes[-1].ly = notes[-1].ly.replace('|','||')
+                        else: notes[-1].ly += ' \\bar "|"'
                 else:
                     # Dans le calcul des durées : la dernière note d'un
                     # neume n'est jamais plus courte que la pénultième.
@@ -293,6 +330,13 @@ class Partition:
                         notes[-1].duree = notes[-2].duree
                     if signe[1] == ')':
                         musique = 0
+                        try:
+                            notes[-1].ly_ccl(premierenote)
+                            premierenote = True
+                        except IndexError: pass
+                        if neumeouvert:
+                            notes[-1].ly += ')'
+                            neumeouvert = False
             # Ignorer les commandes personnalisées. Attention : si
             # l'auteur du gabc a de "mauvaises pratiques" et abuse de
             # telles commandes, cela peut amener des incohérences.
@@ -305,6 +349,10 @@ class Partition:
                 if signe[1] == '(':
                     musique = 1
                     neume += 1
+                    # premierenote : première note d'un élément
+                    # debutneume : première note d'un neume
+                    premierenote = True
+                    debutneume = True
                 # Ignorer les accolades
                 # (qui servent à centrer les notes sur une lettre).
                 elif signe[1] in ('{', '}'): pass
@@ -324,6 +372,8 @@ class Partition:
             elif musique == 2:
                 if signe[1] == ']':
                     musique = 1
+        # La dernière double-barre est une double-barre conclusive.
+        notes[-1].ly = notes[-1].ly.replace('||','|.')
         return notes, texte
     def transposer(self,transposition):
         """Transposition de la partition :
@@ -336,36 +386,6 @@ class Partition:
         # Transposition effective.
         for i in range(len(self.musique)):
             self.musique[i].hauteur += t
-        # Calcul de la nouvelle tonalité
-        tonalitesa = {
-                    'do': 0,
-                    'reb': 1,
-                    're': 2,
-                    'mib': 3,
-                    'mi': 4,
-                    'fa': 5,
-                    'fad': 6,
-                    'sol': 7,
-                    'lab': 8,
-                    'la': 9,
-                    'sib': 10,
-                    'si': 11
-                    }
-        tonalitesb = {
-                    0: 'do',
-                    1: 'reb',
-                    2: 're',
-                    3: 'mib',
-                    4: 'mi',
-                    5: 'fa',
-                    6: 'fad',
-                    7: 'sol',
-                    8: 'lab',
-                    9: 'la',
-                    10: 'sib',
-                    11: 'si'
-                    }
-        self.tonalite[0] = tonalitesb[(tonalitesa[self.tonalite[0]] + t)%12]
     @property
     def tessiture(self):
         """Notes extrêmes de la mélodie"""
@@ -399,11 +419,13 @@ class Note:
         if 'duree' in parametres:
             self.duree = parametres['duree']
         if 'gabc' in parametres:
-            self.hauteur,self.duree = self.g2p(parametres['gabc'])
+            self.gabc = parametres['gabc']
+            self.hauteur,self.duree = self.g2mid(parametres['gabc'])
+        self.ly = self.g2ly()
     @property
     def nom(self):
         """Renvoi du nom "canonique" de la note."""
-        o = int(self.hauteur / 12) - 1
+        o = int(self.hauteur / 12) - 2
         n = int(self.hauteur % 12)
         return ('Do',
                 'Do#',
@@ -417,22 +439,22 @@ class Note:
                 'La',
                 'La#',
                 'Si')[n] + str(o)
-    def ly(self):
+    def g2ly(self):
         """Renvoi du code lilypond correspondant à la note."""
         o = int(self.hauteur / 12) - 1
         n = int(self.hauteur % 12)
         # Nom de la note
         note = ('c',
-                'cis',
+                'des',
                 'd',
-                'dis',
+                'ees',
                 'e',
                 'f',
                 'fis',
                 'g',
                 'gis',
                 'a',
-                'ais',
+                'bes',
                 'b')[n]
         # Hauteur de la note :
         # on prévoit de la1 à sol7, ce qui est plutôt large !
@@ -442,8 +464,19 @@ class Note:
                 "'",
                 "''",
                 "'''",
-                "''''")[o]
-    def g2p(self,gabc):
+                "''''")[o-1]
+        # Durée de la note : croche par défaut, pourra être précisée
+        # par la suite.
+        note += '8'
+        return note
+    def ly_ccl(self,premierenote):
+        if not premierenote:
+            if ']' not in self.ly:
+                if '[' in self.ly:
+                    self.ly = self.ly.replace('[','')
+                else:
+                    self.ly += ']'
+    def g2mid(self,gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
         la = 57                 # Le nombre correspond au "pitch" MIDI.
@@ -578,4 +611,4 @@ class FichierTexte:
         fichier.close()
 
 if __name__ == '__main__':
-    gabc2mid(sys.argv[0],sys.argv[1:])
+    gabc2tk(sys.argv[0],sys.argv[1:])
