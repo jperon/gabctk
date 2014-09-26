@@ -169,7 +169,7 @@ class Partition:
         # S'il y a un bémol à la clé, en tenir compte.
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
-            parametres['tonalite'] = ['fa','M']
+            parametres['tonalite'] = ['f','M']
         # Cas où l'instance de classe est initialisée avec le code gabc
         # (cas le plus courant).
         if 'gabc' in parametres:
@@ -178,7 +178,7 @@ class Partition:
             # ainsi détecté sera traité dans la méthode g2p de la classe
             # Note.
             if len(parametres['gabc'][0][0]) == 3:
-                parametres['tonalite'] = ['fa','M']
+                parametres['tonalite'] = ['f','M']
         # Si l'instance de classe est initialisée avec l'ensemble des
         # notes (pour tessiture ou transposition).
         if 'partition' in parametres:
@@ -188,7 +188,7 @@ class Partition:
         # les choses.
         if 'tonalite' in parametres:
             self.tonalite = parametres['tonalite']
-        else: self.tonalite = ['do','M']
+        else: self.tonalite = ['c','M']
         # A priori, pas de transposition manuelle
         # (elle sera alors calculée automatiquement).
         self.transposition = None
@@ -616,10 +616,10 @@ class Lily:
             "a",
             "bes",
             "b",
-            "c")[(partition.transposition + 7)%14]
+            "c")[(partition.transposition + 11)%24]
         self.entete = '''{\\autoBeamOff\\transpose c ''' + transposition + ''' {
         \\cadenzaOn
-        '''
+        \\key ''' + partition.tonalite[0] + '\\major '
         self.conclusion = '''
         }
 }
