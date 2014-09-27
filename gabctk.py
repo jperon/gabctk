@@ -13,7 +13,8 @@ ENTETE_LILYPOND = (
 }
 
 MusiqueTheme = {
- \\key %(tonalite)s\\major %(musique)s}
+ \\key %(tonalite)s\\major
+ %(musique)s}
 
 Paroles = \\lyricmode {
  %(paroles)s
@@ -25,8 +26,9 @@ Paroles = \\lyricmode {
       \\set Staff.midiInstrument = "flute"
       \\set Staff.autoBeaming = ##f
       \\new Voice = "theme" {
-        \\override Score.PaperColumn #'keep-inside-line = ##t
+        \\override Score.Slur #'stencil = ##f
         \\cadenzaOn \\transpose c %(transposition)s \\MusiqueTheme
+        \\revert Score.Slur #'stencil
       }
     >>
     \\new Lyrics \\lyricsto theme {
@@ -375,6 +377,8 @@ class Partition:
                         if ' \\bar "|"' in notes[-1].ly:
                             notes[-1].ly = notes[-1].ly.replace('|','||')
                         else: notes[-1].ly += ' \\bar "|"\n'
+                    notes[-1].ly = notes[-1].ly.replace('\\bar ""\n \\bar',
+                                                        '\\bar')
                 else:
                     # Dans le calcul des durées : la dernière note d'un
                     # neume n'est jamais plus courte que la pénultième.
@@ -408,8 +412,10 @@ class Partition:
                     musique = 1
                     neume += 1
                     mot.append('')
-                    # premierenote : première note d'un élément
+                    # La prochaine note est la première d'un élément
                     premierenote = True
+                    # La prochaine lettre est la première d'une syllabe
+                    premierelettre = True
                 # Ignorer les accolades
                 # (qui servent à centrer les notes sur une lettre).
                 elif signe[1] in ('{', '}'): pass
@@ -417,15 +423,22 @@ class Partition:
                     # Le changement de mot en grégorien implique
                     # l'annulation des altérations accidentelles.
                     if signe[1] == ' ':
-                        nmot += 1
-                        b = '' + self.b
-                        texte.append([syllabe
-                                    for syllabe in mot
-                                    if syllabe != ''])
-                        mot = ['']
+                        if premierelettre:
+                            nmot += 1
+                            b = '' + self.b
+                            texte.append([syllabe
+                                        for syllabe in mot
+                                        if syllabe != ''])
+                            mot = ['']
+                            try:
+                                if '\\bar' not in notes[-1].ly:
+                                    notes[-1].ly += ' \\bar ""\n'
+                            except IndexError: pass
+                            premierelettre = False
+                        else:
+                            if len(mot[-1]) > 0: mot[-1] += signe[1]
                     else:
                         mot[-1] += signe[1]
-                        print(mot)
             # "Traitement" (par le vide !) des commandes spéciales.
             elif musique == 2:
                 if signe[1] == ']':
@@ -489,14 +502,14 @@ class Note:
         return ('Do',
                 'Do#',
                 'Ré',
-                'Ré#',
+                'Mib',
                 'Mi',
                 'Fa',
                 'Fa#',
                 'Sol',
                 'Sol#',
                 'La',
-                'La#',
+                'Sib',
                 'Si')[n] + str(o)
     def g2ly(self):
         """Renvoi du code lilypond correspondant à la note."""
@@ -504,7 +517,7 @@ class Note:
         n = int(self.hauteur % 12)
         # Nom de la note
         note = ('c',
-                'des',
+                'cis',
                 'd',
                 'ees',
                 'e',
@@ -658,14 +671,27 @@ class Lily:
             )[(partition.transposition + 11)%24]
         self.musique = ' '.join(note.ly for note in partition.musique)
         self.tonalite = partition.tonalite[0]
-        self.paroles = ''
+        self.texte = self.paroles(partition.texte)
+        print(self.texte)
+    def paroles(self,texte):
+        paroles = ''
+        for mot in texte:
+            paroles += ' -- '.join(syllabe.replace(' ','_')
+                for syllabe in mot
+                ) + ' '
+        return paroles\
+            .replace(' *','_*')\
+            .replace(' :','_:\n')\
+            .replace(' ;','_;\n')\
+            .replace(' !','_!\n')\
+            .replace('. ','.\n ')
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
         sortie.ecrire(ENTETE_LILYPOND % {
                         'tonalite': self.tonalite,
                         'musique': self.musique,
                         'transposition': self.transposition,
-                        'paroles': self.paroles
+                        'paroles': self.texte
                         }
                     )
 
