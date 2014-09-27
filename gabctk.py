@@ -172,6 +172,7 @@ def aide(commande,erreur,code):
             + commande + ' '
             + '-i <input.gabc> '
             + '[-o <output.mid>] '
+            + '[-l <output.ly>] '
             + '[-e <texte.txt>] '
             + '[-t <tempo>] '
             + '[-d <transposition>] '
