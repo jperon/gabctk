@@ -138,6 +138,9 @@ def gabc2tk(commande,arguments):
         ## les notes seules.
         print([note.nom for note in partition.musique])
         print()
+        ## les notes lilypond.
+        print([note.ly for note in partition.musique])
+        print()
         ## les paroles en format lilypond
         print(lily.texte)
         print()
@@ -391,13 +394,13 @@ class Partition:
                         notes[-1].ly += ''' \\bar"'"\n'''
                     if signe[1] == ';':
                         notes[-1].duree += .5
-                        notes[-1].ly += ''' \\bar "'"\n'''
+                        notes[-1].ly += ''' \\bar"'"\n'''
                     elif signe[1] == ':':
                         notes[-1].duree += 1
-                        if ' \\bar "|"' in notes[-1].ly:
+                        if ' \\bar"|"' in notes[-1].ly:
                             notes[-1].ly = notes[-1].ly.replace('|','||')
-                        else: notes[-1].ly += ' \\bar "|"\n'
-                    notes[-1].ly = notes[-1].ly.replace('\\bar ""\n \\bar',
+                        else: notes[-1].ly += ' \\bar"|"\n'
+                    notes[-1].ly = notes[-1].ly.replace('\\bar""\n \\bar',
                                                         '\\bar')
                 else:
                     # Dans le calcul des durées : la dernière note d'un
@@ -414,11 +417,9 @@ class Partition:
                                 k += 1
                                 ccl = notes[-1].ly_ccl(premierenote)
                             premierenote = True
-                            if neumeouvert:
-                                notes[-1].ly += ')'
-                            notes[-1].ly = notes[-1].ly.replace('()','')
+#                            if neumeouvert:
                         except IndexError: pass
-                        neumeouvert = False
+#                        neumeouvert = False
             # Ignorer les commandes personnalisées. Attention : si
             # l'auteur du gabc a de "mauvaises pratiques" et abuse de
             # telles commandes, cela peut amener des incohérences.
@@ -452,12 +453,21 @@ class Partition:
                             mot = ['']
                             try:
                                 if '\\bar' not in notes[-1].ly:
-                                    notes[-1].ly += ' \\bar ""\n'
+                                    notes[-1].ly += ' \\bar""\n'
                             except IndexError: pass
                             premierelettre = False
                         else:
                             if len(mot[-1]) > 0: mot[-1] += signe[1]
                     else:
+                        if neumeouvert and len(mot[-1]) == 0 and signe[1] not in '*:;!':
+                            notes[-1].ly += ')'
+                            notes[-1].ly = notes[-1].ly\
+                                .replace(''' \\bar""\n)''',''') \\bar""\n''')\
+                                .replace(''' \\bar"'"\n)''',''') \\bar"'"\n''')\
+                                .replace(''' \\bar"|"\n)''',''') \\bar"'"\n''')\
+                                .replace(''' \\bar"||"\n)''',''') \\bar"'"\n''')\
+                                .replace('()','')
+                            neumeouvert = False
                         mot[-1] += signe[1]
             # "Traitement" (par le vide !) des commandes spéciales.
             elif musique == 2:
@@ -693,7 +703,7 @@ class Lily:
                 for syllabe in mot
                 ) + ' '
         return paroles\
-            .replace(' *','_*')\
+            .replace('*','')\
             .replace(' :','_:\n')\
             .replace(' ;','_;\n')\
             .replace(' !','_!\n')\
