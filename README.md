@@ -16,13 +16,9 @@ Gabctk
 Ce script est dérivé de [gabc2mid](https://github.com/jperon/gabc2mid) ; l'optique du projet s'étant élargie, gabc2mid restera tel qu'il est à présent (sauf correction de bug), et les développements auront lieu ici.
 Gabctk parcourt le code *gabc*, en extrait ce qui concerne la mélodie, et produit celle-ci sous la forme d'un fichier midi. Il peut aussi extraire le texte dans un fichier texte. La syntaxe est la suivante :
 
-    gabctk.py -i </chemin/vers/le/fichier/source.gabc> [-o </chemin/vers/le/fichier/destination.mid>] [-e </chemin/vers/le/fichier/destination.txt>] [-t tempo] [-d transposition] [-a alerte]
+    gabctk.py -i </chemin/vers/le/fichier/source.gabc> [-o </chemin/vers/le/fichier/destination.mid>] [-l </chemin/vers/le/fichier/destination.ly>] [-e </chemin/vers/le/fichier/destination.txt>] [-t tempo] [-d transposition] [-a alerte]
 
-Seul le premier argument est obligatoire : tous les autres sont optionnels.
-
-En l'absence du deuxième argument (fichier midi de destination), gabctk produira un fichier midi dans le même dossier que la source, portant le même nom.
-
-En l'absence du troisième argument (fichier texte de destination), aucun fichier texte ne sera produit.
+Toutes les options sont facultatives, mais en l'absence d'option de sortie (-o, -l ou -e), vous ne verrez que la tessiture obtenue après transposition !
 
 Le tempo est exprimé en temps premiers par minute : sa valeur par défaut est 165.
 

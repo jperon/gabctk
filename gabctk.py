@@ -49,17 +49,18 @@ def gabc2tk(commande,arguments):
     # Initialisation des variables correspondant aux paramètres.
     debug = False
     tempo = 165
-    entree = sortie = transposition = ''
+    entree = sortieMidi = sortieLily = transposition = paroles = ''
     alertes = corrections = []
     # Analyse des arguments de la ligne de commande.
     try:
         opts, args = getopt.getopt(
                                 arguments,
-                                "hi:o:e:t:d:a:v",
+                                "hi:o:l:e:t:d:a:v",
                                 [
                                     "help",                             # Aide
                                     "entree=",                          # Fichier gabc
-                                    "sortie=",                          # Fichier MIDI
+                                    "midi=",                            # Fichier MIDI
+                                    "lily=",                            # Fichier ly
                                     "export=",                          # Fichier texte
                                     "tempo=",                           # Tempo de la musique
                                     "transposition=",                   # Transposition
@@ -74,11 +75,10 @@ def gabc2tk(commande,arguments):
             aide(commande,0)
         elif opt in ("-i", "--entree"):
             entree = FichierTexte(arg)
-            sortie = Fichier(re.sub('.gabc','.mid',arg))
-            sortieLily = Fichier(re.sub('.gabc','.ly',arg))
-        elif opt in ("-o", "--sortie"):
-            sortie = Fichier(arg)
-            sortieLily = Fichier(re.sub('.mid','.ly',arg))
+        elif opt in ("-o", "--midi"):
+            sortieMidi = Fichier(arg)
+        elif opt in ("-l", "--lily"):
+            sortieLily = FichierTexte(arg)
         elif opt in ("-e", "--export"):
             texte = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
@@ -91,18 +91,20 @@ def gabc2tk(commande,arguments):
             debug = True
     # Si les arguments n'ont pas été saisis explicitement,
     # considérer le premier comme étant le gabc en entrée ;
-    # en l'absence de deuxième, donner à la sortie le même nom,
-    # en changeant l'extension.
+    # en l'absence de deuxième, donner à la sortie midi et à la sortie
+    # lilypond le même nom, en changeant l'extension.
     try:
         if entree == '':
             entree = FichierTexte(arguments[0])
-        if sortie == '':
+        if sortieMidi == '':
             try:
-                sortie = FichierTexte(arguments[1])
-                sortieLily = Fichier(re.sub('.mid','.ly',arguments[1]))
+                if arguments[1][-4:-1] == '.mid':
+                    sortieMidi = Fichier(arguments[1])
+                elif arguments[1][-3:-1] == '.ly':
+                    sortieLily = FichierTexte(arguments[1])
             except IndexError:
-                sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
-                sortieLily = Fichier(re.sub('.gabc','.ly',arguments[0]))
+                sortieMidi = Fichier(re.sub('.gabc','.mid',arguments[0]))
+                sortieLily = FichierTexte(re.sub('.gabc','.ly',arguments[0]))
     # S'il n'y a aucun argument, afficher l'aide.
     except IndexError: aide(commande,'aucun argument',0)
     # Extraire le contenu du gabc.
@@ -119,28 +121,42 @@ def gabc2tk(commande,arguments):
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
         + Note(hauteur = partition.tessiture['maximum']).nom)
+    # Créer les objets midi et lilypond.
+    midi = Midi(partition,tempo)
+    lily = Lily(partition,tempo)
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
         ## la partition gabc (sans les en-têtes) ;
         print(gabc.contenu)
+        print()
         ## la liste des couples (clé, signe gabc) ;
         print(gabc.partition)
+        print()
         ## les paroles seules ;
         print(partition.texte)
+        print()
         ## les notes seules.
         print([note.nom for note in partition.musique])
+        print()
+        ## les paroles en format lilypond
+        print(lily.texte)
+        print()
     # Créer le fichier midi.
-    midi = Midi(partition,tempo)
-    midi.ecrire(sortie.chemin)
-    lily = Lily(partition,tempo)
-    lily.ecrire(sortieLily.chemin)
+    try:
+        midi.ecrire(sortieMidi.chemin)
+    except AttributeError: pass
+    try:
+        lily.ecrire(sortieLily.chemin)
+    except AttributeError: pass
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
     try: partition.verifier(alertes)
     except: pass
     # Si l'utilisateur l'a demandé,
     # écrire les paroles dans un fichier texte.
-    try: texte.ecrire(partition.texte)
+    for mot in partition.texte:
+            paroles += ''.join(syllabe for syllabe in mot) + ' '
+    try: texte.ecrire(paroles + '\n')
     except UnboundLocalError: pass
 
 def aide(commande,erreur,code):
@@ -672,7 +688,6 @@ class Lily:
         self.musique = ' '.join(note.ly for note in partition.musique)
         self.tonalite = partition.tonalite[0]
         self.texte = self.paroles(partition.texte)
-        print(self.texte)
     def paroles(self,texte):
         paroles = ''
         for mot in texte:
