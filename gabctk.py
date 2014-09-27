@@ -260,8 +260,9 @@ class Partition:
         # Initialisation des variables.
         notes = []
         b = '' + self.b
-        mot = 0
-        texte = ''
+        nmot = 0
+        mot = []
+        texte = []
         neume = 0
         neumeencours = ''
         premierenote = True
@@ -406,6 +407,7 @@ class Partition:
                 if signe[1] == '(':
                     musique = 1
                     neume += 1
+                    mot.append('')
                     # premierenote : première note d'un élément
                     premierenote = True
                 # Ignorer les accolades
@@ -415,21 +417,22 @@ class Partition:
                     # Le changement de mot en grégorien implique
                     # l'annulation des altérations accidentelles.
                     if signe[1] == ' ':
-                        mot += 1
+                        nmot += 1
                         b = '' + self.b
-                        try:
-                            # Ignorer les espaces répétitifs.
-                            if texte[-1] != ' ':
-                                texte += signe[1]
-                        except IndexError: pass
-                    else: texte += signe[1]
+                        texte.append([syllabe
+                                    for syllabe in mot
+                                    if syllabe != ''])
+                        mot = ['']
+                    else:
+                        mot[-1] += signe[1]
+                        print(mot)
             # "Traitement" (par le vide !) des commandes spéciales.
             elif musique == 2:
                 if signe[1] == ']':
                     musique = 1
         # La dernière double-barre est une double-barre conclusive.
         notes[-1].ly = notes[-1].ly.replace('||','|.')
-        return notes, texte
+        return notes, [mot for mot in texte if mot != []]
     def transposer(self):
         """Transposition de la partition automatiquement
         sur une tessiture moyenne."""
