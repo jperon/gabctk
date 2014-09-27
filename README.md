@@ -28,5 +28,5 @@ Si des alertes sont définies, gabctk renverra un message chaque fois qu'il dét
 
 Si vous ne voulez pas modifier les options par défaut, vous pouvez aussi utiliser la syntaxe suivante :
 
-    gabctk.py </chemin/vers/le/fichier/source.gabc> [</chemin/vers/le/fichier/destination.mid>]
+    gabctk.py </chemin/vers/le/fichier/source.gabc> [</chemin/vers/le/fichier/destination.mid> OU </chemin/vers/le/fichier/destination.ly>]
 

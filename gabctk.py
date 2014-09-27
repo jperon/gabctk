@@ -98,9 +98,9 @@ def gabc2tk(commande,arguments):
             entree = FichierTexte(arguments[0])
         if sortieMidi == '':
             try:
-                if arguments[1][-4:-1] == '.mid':
+                if arguments[1][-4:] == '.mid':
                     sortieMidi = Fichier(arguments[1])
-                elif arguments[1][-3:-1] == '.ly':
+                elif arguments[1][-3:] == '.ly':
                     sortieLily = FichierTexte(arguments[1])
             except IndexError:
                 sortieMidi = Fichier(re.sub('.gabc','.mid',arguments[0]))
