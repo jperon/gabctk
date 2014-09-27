@@ -24,7 +24,7 @@ Le tempo est exprimé en temps premiers par minute : sa valeur par défaut est 
 
 La transposition est exprimée en demi-tons. En son absence, gabctk transposera automatiquement le chant sur une tessiture facile à chanter. Le programme renvoie sur la sortie standard la plus basse et la plus haute notes obtenues.
 
-Si des alertes sont définies, gabctk renverra un message chaque fois qu'il détecte la chaîne de caractères dans le texte du chant. Par exemple, *gabctk -i <Fichier.gabc> -a j -a eumdem* renverra un message si le texte contient des *j* ou le mot *eumdem*.
+Si des alertes sont définies, gabctk renverra un message chaque fois qu'il détecte la chaîne de caractères dans le texte du chant. Par exemple, *gabctk -i \<Fichier.gabc\> -a j -a eumdem* renverra un message si le texte contient des *j* ou le mot *eumdem*.
 
 Si vous ne voulez pas modifier les options par défaut, vous pouvez aussi utiliser la syntaxe suivante :
 

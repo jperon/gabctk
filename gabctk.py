@@ -152,10 +152,13 @@ def gabc2tk(commande,arguments):
     # à la demande de l'utilisateur.
     try: partition.verifier(alertes)
     except: pass
-    # Si l'utilisateur l'a demandé,
-    # écrire les paroles dans un fichier texte.
+    # Création d'une variable contenant les paroles.
     for mot in partition.texte:
             paroles += ''.join(syllabe for syllabe in mot) + ' '
+    # S'assurer des alertes définies par l'utilisateur.
+    verifier(alertes,paroles)
+    # Si l'utilisateur l'a demandé,
+    # écrire les paroles dans un fichier texte.
     try: texte.ecrire(paroles + '\n')
     except UnboundLocalError: pass
 
@@ -489,12 +492,6 @@ class Partition:
             minimum += self.transposition
             maximum += self.transposition
         return {'minimum': minimum, 'maximum': maximum}
-    def verifier(self,alertes):
-        """Contrôle de la présence de certains caractères
-        (à la demande de l'utilisateur"""
-        for alerte in alertes:
-            if alerte in self.texte:
-                print("!!! " + alerte + " !!!")
 
 class Note:
     """Note de musique"""
@@ -735,6 +732,13 @@ class FichierTexte:
         fichier = open(self.chemin,'w')
         fichier.write(contenu)
         fichier.close()
+
+def verifier(alertes,texte):
+        """Contrôle de la présence de certains caractères
+        (à la demande de l'utilisateur"""
+        for alerte in alertes:
+            if alerte in texte:
+                print("!!! " + alerte + " !!!")
 
 if __name__ == '__main__':
     gabc2tk(sys.argv[0],sys.argv[1:])
