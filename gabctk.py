@@ -4,6 +4,39 @@
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
+ENTETE_LILYPOND = (
+'''\\version "2.16"
+
+\header {
+  tagline = ""
+  composer = ""
+}
+
+MusiqueTheme = {
+ \\key %(tonalite)s\\major %(musique)s}
+
+Paroles = \\lyricmode {
+ %(paroles)s
+}
+
+\\score{
+  <<
+    \\new Staff <<
+      \\set Staff.midiInstrument = "flute"
+      \\set Staff.autoBeaming = ##f
+      \\new Voice = "theme" {
+        \\override Score.PaperColumn #'keep-inside-line = ##t
+        \\cadenzaOn \\transpose c %(transposition)s \\MusiqueTheme
+      }
+    >>
+    \\new Lyrics \\lyricsto theme {
+      \\Paroles
+    }
+  >>
+  \layout{}
+  \midi{}
+}'''
+)
 
 import os,sys,getopt
 import re
@@ -40,8 +73,10 @@ def gabc2tk(commande,arguments):
         elif opt in ("-i", "--entree"):
             entree = FichierTexte(arg)
             sortie = Fichier(re.sub('.gabc','.mid',arg))
+            sortieLily = Fichier(re.sub('.gabc','.ly',arg))
         elif opt in ("-o", "--sortie"):
             sortie = Fichier(arg)
+            sortieLily = Fichier(re.sub('.mid','.ly',arg))
         elif opt in ("-e", "--export"):
             texte = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
@@ -62,6 +97,7 @@ def gabc2tk(commande,arguments):
         if sortie == '':
             try:
                 sortie = FichierTexte(arguments[1])
+                sortieLily = Fichier(re.sub('.mid','.ly',arguments[1]))
             except IndexError:
                 sortie = Fichier(re.sub('.gabc','.mid',arguments[0]))
                 sortieLily = Fichier(re.sub('.gabc','.ly',arguments[0]))
@@ -77,7 +113,6 @@ def gabc2tk(commande,arguments):
                         gabc = gabc.partition,
                         transposition = transposition
                         )
-    print(' '.join(note.ly for note in partition.musique))
     # Afficher la tessiture obtenue après transposition.
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
@@ -230,7 +265,6 @@ class Partition:
         neume = 0
         neumeencours = ''
         premierenote = True
-        debutneume = True
         neumeouvert = False
         # La variable musique est un drapeau :
         # 0 indique que l'on est dans le texte ;
@@ -253,10 +287,9 @@ class Partition:
                     if premierenote:
                         notes[-1].ly += '['
                         premierenote = False
-                    if debutneume:
+                    if not neumeouvert:
                         notes[-1].ly += '('
                         neumeouvert = True
-                        debutneume = False
                     # La variable memoire sert à garder le souvenir de
                     # la hauteur de note, afin de traiter certains cas
                     # particuliers (altérations, distrophas…).
@@ -280,6 +313,16 @@ class Partition:
                     j -= 1
                     notes[j].duree = DUREE_POINT
                     notes[j].ly = notes[j].ly.replace('8','4')
+                    notes[j].ly = notes[j].ly.replace('[','')
+                    notes[j].ly = notes[j].ly.replace(']','')
+                    ccl = False
+                    k = 0
+                    while not ccl:
+                        k += 1
+                        try:
+                            ccl = notes[j-k].ly_ccl(False)
+                        except IndexError: pass
+                    premierenote = True
                 elif signe[1] == quilisma:
                     notes[-2].duree = DUREE_AVANT_QUILISMA
                     if '--' not in notes[-2].ly: notes[-2].ly += '--'
@@ -288,12 +331,16 @@ class Partition:
                 elif signe[1] == bemol:
                     b = b + memoire[1]
                     if '[' in notes[-1].ly: premierenote = True
-                    if '(' in notes[-1].ly: debutneume = True
+                    if '(' in notes[-1].ly:
+                        notes[-1].ly.replace('(','')
+                        neumeouvert = False
                     notes = notes[:-1]
                 elif signe[1] == becarre:
                     re.sub(memoire[1],'',b)
                     if '[' in notes[-1].ly: premierenote = True
-                    if '(' in notes[-1].ly: debutneume = True
+                    if '(' in notes[-1].ly:
+                        notes[-1].ly.replace('(','')
+                        neumeouvert = False
                     notes = notes[:-1]
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
@@ -305,7 +352,8 @@ class Partition:
                         notes[-1].duree = notes[-2].duree
                     ### Discutable : faut-il couper le "neume" en
                     ### notation moderne (ce que ne fait pas
-                    ### Solesmes) ?
+                    ### Solesmes) quand on rencontre une coupure
+                    ### neumatique ?
                     notes[-1].ly_ccl(premierenote)
                     premierenote = True
                 # Une barre annule les altérations accidentelles,
@@ -335,12 +383,17 @@ class Partition:
                     if signe[1] == ')':
                         musique = 0
                         try:
-                            notes[-1].ly_ccl(premierenote)
+                            ccl = False
+                            k = 0
+                            while not ccl:
+                                k += 1
+                                ccl = notes[-1].ly_ccl(premierenote)
                             premierenote = True
+                            if neumeouvert:
+                                notes[-1].ly += ')'
+                            notes[-1].ly = notes[-1].ly.replace('()','')
                         except IndexError: pass
-                        if neumeouvert:
-                            notes[-1].ly += ')'
-                            neumeouvert = False
+                        neumeouvert = False
             # Ignorer les commandes personnalisées. Attention : si
             # l'auteur du gabc a de "mauvaises pratiques" et abuse de
             # telles commandes, cela peut amener des incohérences.
@@ -354,9 +407,7 @@ class Partition:
                     musique = 1
                     neume += 1
                     # premierenote : première note d'un élément
-                    # debutneume : première note d'un neume
                     premierenote = True
-                    debutneume = True
                 # Ignorer les accolades
                 # (qui servent à centrer les notes sur une lettre).
                 elif signe[1] in ('{', '}'): pass
@@ -475,12 +526,17 @@ class Note:
         note += '8'
         return note
     def ly_ccl(self,premierenote):
-        if not premierenote:
+        if premierenote:
+            return True
+        if '4' in self.ly:
+            return False
+        if '\n' not in self.ly:
             if ']' not in self.ly:
                 if '[' in self.ly:
                     self.ly = self.ly.replace('[','')
                 else:
                     self.ly += ']'
+            return True
     def g2mid(self,gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
@@ -591,43 +647,24 @@ class Midi:
 
 class Lily:
     def __init__(self,partition,tempo):
-        transposition = (
-            "c,",
-            "des,",
-            "d,",
-            "ees,",
-            "e,",
-            "f,",
-            "fis,",
-            "g,",
-            "aes,",
-            "a,",
-            "bes,",
-            "b,",
-            "c",
-            "des",
-            "d",
-            "ees",
-            "e",
-            "f",
-            "fis",
-            "g",
-            "aes",
-            "a",
-            "bes",
-            "b",
-            "c")[(partition.transposition + 11)%24]
-        self.entete = '''{\\autoBeamOff\\transpose c ''' + transposition + ''' {
-        \\cadenzaOn
-        \\key ''' + partition.tonalite[0] + '\\major '
-        self.conclusion = '''
-        }
-}
-        '''
+        self.transposition = (
+            "c,","des,","d,","ees,","e,","f,",
+            "fis,","g,","aes,","a,","bes,","b,",
+            "c","des","d","ees","e","f",
+            "fis","g","aes","a","bes","b","c"
+            )[(partition.transposition + 11)%24]
         self.musique = ' '.join(note.ly for note in partition.musique)
+        self.tonalite = partition.tonalite[0]
+        self.paroles = ''
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
-        sortie.ecrire(self.entete + self.musique + self.conclusion)
+        sortie.ecrire(ENTETE_LILYPOND % {
+                        'tonalite': self.tonalite,
+                        'musique': self.musique,
+                        'transposition': self.transposition,
+                        'paroles': self.paroles
+                        }
+                    )
 
 class Fichier:
     """Gestion des entrées/sorties fichier"""
