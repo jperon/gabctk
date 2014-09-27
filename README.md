@@ -18,7 +18,7 @@ Gabctk parcourt le code *gabc*, en extrait ce qui concerne la mélodie, et produ
 
     gabctk.py -i </chemin/vers/le/fichier/source.gabc> [-o </chemin/vers/le/fichier/destination.mid>] [-l </chemin/vers/le/fichier/destination.ly>] [-e </chemin/vers/le/fichier/destination.txt>] [-t tempo] [-d transposition] [-a alerte]
 
-Toutes les options sont facultatives, mais en l'absence d'option, vous ne verrez que la tessiture obtenue après transposition !
+Toutes les options entre crochets sont facultatives, mais en l'absence d'option, vous ne verrez que la tessiture obtenue après transposition !
 
 Le tempo est exprimé en temps premiers par minute : sa valeur par défaut est 165.
 
