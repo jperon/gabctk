@@ -289,11 +289,10 @@ class Partition:
         # Initialisation des variables.
         notes = []
         b = '' + self.b
-        nmot = 0
         mot = []
         texte = []
         neume = 0
-        neumeencours = ''
+        neumeencours = 0
         premierenote = True
         neumeouvert = False
         # La variable musique est un drapeau :
@@ -303,8 +302,7 @@ class Partition:
         #   crochets. Attention : ces commandes sont purement et
         #   simplement ignorées.
         musique = 0
-        for i in range(len(gabc)):
-            signe = gabc[i]
+        for i,signe in enumerate(gabc):
             # Traitement des notes de musique.
             if musique == 1:
                 if signe[1].lower() in gabcnotes:
@@ -391,7 +389,6 @@ class Partition:
                 # note précédente.
                 ### TODO: les barres en Lilypond seraient à revoir.
                 elif signe[1] in barres:
-                    mot.append('|')
                     b = '' + self.b
                     notes[-1].ly_ccl(premierenote)
                     premierenote = True
@@ -448,7 +445,6 @@ class Partition:
                     # l'annulation des altérations accidentelles.
                     if signe[1] == ' ':
                         if premierelettre:
-                            nmot += 1
                             b = '' + self.b
                             texte.append(mot)
                             mot = ['']
