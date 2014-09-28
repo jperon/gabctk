@@ -12,6 +12,10 @@ ENTETE_LILYPOND = (
   composer = ""
 }
 
+\\paper {
+ #(include-special-characters)
+}
+
 MusiqueTheme = {
  \\key %(tonalite)s\\major
  %(musique)s}
@@ -387,6 +391,7 @@ class Partition:
                 # note précédente.
                 ### TODO: les barres en Lilypond seraient à revoir.
                 elif signe[1] in barres:
+                    mot.append('|')
                     b = '' + self.b
                     notes[-1].ly_ccl(premierenote)
                     premierenote = True
@@ -417,9 +422,7 @@ class Partition:
                                 k += 1
                                 ccl = notes[-1].ly_ccl(premierenote)
                             premierenote = True
-#                            if neumeouvert:
                         except IndexError: pass
-#                        neumeouvert = False
             # Ignorer les commandes personnalisées. Attention : si
             # l'auteur du gabc a de "mauvaises pratiques" et abuse de
             # telles commandes, cela peut amener des incohérences.
@@ -447,9 +450,7 @@ class Partition:
                         if premierelettre:
                             nmot += 1
                             b = '' + self.b
-                            texte.append([syllabe
-                                        for syllabe in mot
-                                        if syllabe != ''])
+                            texte.append(mot)
                             mot = ['']
                             try:
                                 if '\\bar' not in notes[-1].ly:
@@ -457,9 +458,9 @@ class Partition:
                             except IndexError: pass
                             premierelettre = False
                         else:
-                            if len(mot[-1]) > 0: mot[-1] += signe[1]
+                            mot[-1] += signe[1]
                     else:
-                        if neumeouvert and len(mot[-1]) == 0 and signe[1] not in '*:;!':
+                        if neumeouvert and len(mot[-1]) == 0:
                             notes[-1].ly += ')'
                             notes[-1].ly = notes[-1].ly\
                                 .replace(''' \\bar""\n)''',''') \\bar""\n''')\
@@ -474,8 +475,8 @@ class Partition:
                 if signe[1] == ']':
                     musique = 1
         # La dernière double-barre est une double-barre conclusive.
-        notes[-1].ly = notes[-1].ly.replace('||','|.')
-        return notes, [mot for mot in texte if mot != []]
+        notes[-1].ly = notes[-1].ly.replace('||','|.').replace('(','')
+        return notes, texte[1:]
     def transposer(self):
         """Transposition de la partition automatiquement
         sur une tessiture moyenne."""
@@ -698,16 +699,20 @@ class Lily:
         self.texte = self.paroles(partition.texte)
     def paroles(self,texte):
         paroles = ''
-        for mot in texte:
-            paroles += ' -- '.join(syllabe.replace(' ','_')
-                for syllabe in mot
-                ) + ' '
+        for nmot, mot in enumerate(texte):
+            for nsyllabe, syllabe in enumerate(mot):
+                if syllabe == '':
+                    try:
+                        if texte[nmot+1][0] == '*':
+                            if texte[nmot+2] == '':
+                                paroles += '_'
+                    except IndexError: pass
         return paroles\
-            .replace('*','')\
             .replace(' :','_:\n')\
             .replace(' ;','_;\n')\
             .replace(' !','_!\n')\
-            .replace('. ','.\n ')
+            .replace('. ','.\n ')\
+            .replace('*','&zwj;*')
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
         sortie.ecrire(ENTETE_LILYPOND % {
