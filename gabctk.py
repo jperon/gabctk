@@ -671,36 +671,74 @@ class Lily:
         self.tonalite = partition.tonalite[0]
         self.texte = self.paroles(partition.texte,partition.musique)
     def notes(self,musique):
+        # Initialisation des variables.
         notes = ''
         prochainenote = ''
+        # Drapeaux permettant de savoir où l'on en est :
+        #   − ligatureouverte indique si l'élément neumatique est
+        #     commencé ;
+        #   − neumeouvert indique si le neume est commencé, ce qui se
+        #     traduit dans le code lilypond par une liaison (qui permet
+        #     d'associer l'ensemble des notes qu'elle couvre à la
+        #     syllabe concernée) ; cette liaison est rendue invisible
+        #     du fait des paramètres du préambule lilypond ;
+        #   − noire indique si la note est une noire (auquel cas elle
+        #     ne peut s'insérer dans une ligature).
         ligatureouverte = False
+        neumeouvert = False
         noire = False
         for neume in musique:
             for i,note in enumerate(neume):
+                # Traitement des notes.
                 if type(note) == Note:
+                    # La noire va un peu nous compliquer la vie.
                     noire = (note.ly[-1] == '4')
+                    # On ferme la ligature avant la noire.
                     if ligatureouverte and noire:
                         notes += '] '
                         ligatureouverte = False
+                    # On ajoute la note à la partition.
                     notes += ' ' + note.ly
+                    # Si la note est la première d'un neume qui en
+                    # contient plusieurs, il faut ouvrir le neume.
                     if i == 0:
                         try:
                             if neume[i+1]:
                                 notes += '('
+                                neumeouvert = True
+                                # La première note, si elle n'est pas
+                                # une noire, ouvre aussi une ligature.
                                 if not noire:
                                     notes += '['
                                     ligatureouverte = True
+                        # Cette exception sera levée si le neume ne
+                        # comporte qu'une seule note, ce qui évite des
+                        # ligatures et liaisons inutiles.
                         except IndexError: pass
+                    # Si une noire ou une barre nous a forcés à fermer
+                    # la ligature, il faut la rouvrir ensuite.
                     elif not ligatureouverte and not noire:
                         notes += '['
                         ligatureouverte = True
+                # Traitement des barres.
                 elif type(note) == Barre:
+                    # On ferme la ligature avant la barre.
                     if ligatureouverte:
                         notes += ']'
                         ligatureouverte = False
+                    # Si la barre est le dernier élément du neume, il
+                    # faut achever ce dernier avant d'écrire la barre.
+                    if neumeouvert and i == len(neume)-1:
+                        notes += ')'
+                        neumeouvert = False
+                    # On ajoute la barre à la partition.
                     notes += ' ' + note.ly + '\n'
+            # Si le neume comporte plusieurs notes, on ferme si besoin
+            # ligatures et liaisons.
             if i > 0:
-                notes += ')'
+                if neumeouvert:
+                    notes += ')'
+                    neumeouvert = False
                 if ligatureouverte:
                     notes += ']'
                     ligatureouverte = False
@@ -716,6 +754,7 @@ class Lily:
                 if parole != '':
                     paroles += '_' + paroleprecedente
                 else: parole = paroleprecedente
+            if parole == '': parole = '_'
             nnotes = 0
             for syllabe in mot:
                 nnotes += len([notes for notes in musique[i] if type(notes) == Note])
