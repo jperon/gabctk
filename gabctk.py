@@ -1,6 +1,9 @@
 #! /usr/bin/python3
 # -*- coding: UTF-8 -*-
 
+
+#### Variables globales ################################################
+
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
@@ -44,9 +47,13 @@ Paroles = \\lyricmode {
 }'''
 )
 
+#### Librairies externes ###############################################
+
 import os,sys,getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
+
+#### Méthodes globales #################################################
 
 def gabc2tk(commande,arguments):
     """Fonction maîtresse"""
@@ -187,6 +194,18 @@ def aide(commande,erreur,code):
     # Renvoyer le code correspondant à l'erreur,
     # pour interagir avec d'autres programmes.
     sys.exit(code)
+
+def verifier(alertes,texte):
+        """Contrôle de la présence de certains caractères
+        (à la demande de l'utilisateur"""
+        for alerte in alertes:
+            if alerte in texte:
+                print("!!! " + alerte + " !!!")
+
+
+#### Classes ###########################################################
+
+##### Classes servant à l'analyse du gabc, de la mélodie et des paroles.
 
 class Gabc:
     """Description du fichier gabc"""
@@ -516,6 +535,34 @@ class Partition:
             maximum += self.transposition
         return {'minimum': minimum, 'maximum': maximum}
 
+class Barre:
+    def __init__(self,**parametres):
+        if 'gabc' in parametres:
+            self.gabc = parametres['gabc']
+    @property
+    def ly(self):
+        # TODO: trouver une meilleure expression pour la demi-barre.
+        return '''\\bar "%s"''' % self.nom
+    @property
+    def nom(self):
+        return {'':"",
+                ',':"'",
+                ';':"'",
+                ':':"|",
+                '::':"||"
+                }[self.gabc[1]]
+
+class Coupure:
+    def __init__(self,**parametres):
+        if 'gabc' in parametres:
+            self.gabc = parametres['gabc']
+    @property
+    def ly(self):
+        return ''
+    @property
+    def nom(self):
+        return self.gabc[1]
+
 class Note:
     """Note de musique"""
     def __init__(self,**parametres):
@@ -652,69 +699,8 @@ class Note:
             hauteur -= 1
         return hauteur,duree
 
-class Barre:
-    def __init__(self,**parametres):
-        if 'gabc' in parametres:
-            self.gabc = parametres['gabc']
-    @property
-    def ly(self):
-        # TODO: trouver une meilleure expression pour la demi-barre.
-        return '''\\bar "%s"''' % self.nom
-    @property
-    def nom(self):
-        return {'':"",
-                ',':"'",
-                ';':"'",
-                ':':"|",
-                '::':"||"
-                }[self.gabc[1]]
 
-class Coupure:
-    def __init__(self,**parametres):
-        if 'gabc' in parametres:
-            self.gabc = parametres['gabc']
-    @property
-    def ly(self):
-        return ''
-    @property
-    def nom(self):
-        return self.gabc[1]
-
-class Midi:
-    """Musique midi"""
-    def __init__(self,partition,tempo):
-        # Définition des paramètres MIDI.
-        piste = 0
-        temps = 0
-        self.sortieMidi = MIDIFile(1)
-        # Nom de la piste.
-        self.sortieMidi.addTrackName(piste,temps,"Gregorien")
-        # Tempo.
-        self.sortieMidi.addTempo(piste,temps, tempo)
-        # Instrument (74 : flûte).
-        self.sortieMidi.addProgramChange(piste,0,temps,74)
-        # À partir des propriétés de la note, création des évènements
-        # MIDI.
-        for neume in partition.musique:
-            for note in (notes
-                        for notes in neume
-                        if type(notes) == Note):
-                channel = 0
-                pitch = note.hauteur + partition.transposition
-                duree = note.duree
-                volume = 127
-                self.sortieMidi.addNote(piste,
-                                        channel,
-                                        pitch,
-                                        temps,
-                                        duree,
-                                        volume)
-                temps += duree
-    def ecrire(self,chemin):
-        """Écriture effective du fichier MIDI"""
-        binfile = open(chemin, 'wb')
-        self.sortieMidi.writeFile(binfile)
-        binfile.close()
+##### Classes servant à l'export en différents formats.
 
 class Lily:
     def __init__(self,partition,tempo):
@@ -877,6 +863,45 @@ class Lily:
                         }
                     )
 
+class Midi:
+    """Musique midi"""
+    def __init__(self,partition,tempo):
+        # Définition des paramètres MIDI.
+        piste = 0
+        temps = 0
+        self.sortieMidi = MIDIFile(1)
+        # Nom de la piste.
+        self.sortieMidi.addTrackName(piste,temps,"Gregorien")
+        # Tempo.
+        self.sortieMidi.addTempo(piste,temps, tempo)
+        # Instrument (74 : flûte).
+        self.sortieMidi.addProgramChange(piste,0,temps,74)
+        # À partir des propriétés de la note, création des évènements
+        # MIDI.
+        for neume in partition.musique:
+            for note in (notes
+                        for notes in neume
+                        if type(notes) == Note):
+                channel = 0
+                pitch = note.hauteur + partition.transposition
+                duree = note.duree
+                volume = 127
+                self.sortieMidi.addNote(piste,
+                                        channel,
+                                        pitch,
+                                        temps,
+                                        duree,
+                                        volume)
+                temps += duree
+    def ecrire(self,chemin):
+        """Écriture effective du fichier MIDI"""
+        binfile = open(chemin, 'wb')
+        self.sortieMidi.writeFile(binfile)
+        binfile.close()
+
+
+##### Classes génériques pour faciliter l'écriture de fichiers.
+
 class Fichier:
     """Gestion des entrées/sorties fichier"""
     def __init__(self,chemin):
@@ -903,12 +928,6 @@ class FichierTexte:
         fichier.write(contenu)
         fichier.close()
 
-def verifier(alertes,texte):
-        """Contrôle de la présence de certains caractères
-        (à la demande de l'utilisateur"""
-        for alerte in alertes:
-            if alerte in texte:
-                print("!!! " + alerte + " !!!")
 
 if __name__ == '__main__':
     gabc2tk(sys.argv[0],sys.argv[1:])
