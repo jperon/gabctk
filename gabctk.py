@@ -140,11 +140,10 @@ def gabc2tk(commande,arguments):
         print(partition.texte)
         print()
         ## les notes seules.
-        print([note.nom for note in partition.musique])
-        print()
-        ## les notes lilypond.
-        print([note.ly for note in partition.musique])
-        print()
+        for neume in partition.musique:
+            print([note.nom for note in neume])
+            print()
+        print(lily.musique)
         ## les paroles en format lilypond
         print(lily.texte)
         print()
@@ -216,8 +215,12 @@ class Gabc:
         # Définition des couples (clé, signe).
         for i,cle in enumerate(cles):
             try:
-                for n in parties[i]:
-                    resultat.append((cle,n))
+                for j,n in enumerate(parties[i]):
+                    # Élimination des "déchets" initiaux.
+                    if j < 2: pass
+                    elif j == 3 and n == ' ': pass
+                    # Enregistrement des informations utiles.
+                    else: resultat.append((cle,n))
             # Si, si, c'est arrivé…
             except IndexError:
                 sys.stderr.write("Il semble que vous ayez des "
@@ -280,6 +283,7 @@ class Partition:
         gabcnotes = "abcdefghijklm"
         episeme = '_'
         point = '.'
+        ictus = "'"
         quilisma = 'w'
         speciaux = 'osvOSV'
         barres = '`,;:'
@@ -287,212 +291,176 @@ class Partition:
         becarre = "y"
         coupures = '/ '
         # Initialisation des variables.
-        notes = []
-        b = '' + self.b
-        mot = []
         texte = []
-        neume = 0
-        neumeencours = 0
-        premierenote = True
-        neumeouvert = False
+        mot = []
+        syllabe = ''
+        melodie = []
+        neume = []
+        b = self.b
         # La variable musique est un drapeau :
         # 0 indique que l'on est dans le texte ;
         # 1 indique que l'on est dans un neume, entre deux parenthèses ;
+        #   NB : pour les besoins de l'informatique, on considère ici un
+        #   neume comme l'ensemble des notes comprises entre deux
+        #   parenthèses, et une syllabe comme le texte situé juste avant
+        #   la parenthèse ouvrante. Il peut donc y avoir des syllabes
+        #   vides.
         # 2 indique que l'on est dans une commande spéciale, entre
         #   crochets. Attention : ces commandes sont purement et
         #   simplement ignorées.
         musique = 0
         for i,signe in enumerate(gabc):
-            # Traitement des notes de musique.
-            if musique == 1:
+            # Traitement du texte.
+            if musique == 0:
+                # Si une parenthèse s'ouvre, un neume commence.
+                if signe[1] == '(':
+                    musique = 1
+                # Traitement des espaces.
+                elif signe[1] == ' ':
+                    # Le premier espace indique un changement de mot.
+                    # On ajoute le mot au texte, on réinitialise le mot.
+                    # S'il y a plusieurs espaces, on les ignore.
+                    if syllabe == '':
+                        if mot != []:
+                           texte.append(mot)
+                        mot = []
+                    # Les autres espaces appartiennent à la syllabe,
+                    # mais on ignore les espaces répétitifs.
+                    else:
+                        syllabe = (syllabe + ' ').replace('  ',' ')
+                # Ce qui n'est pas espace est considéré comme lettre.
+                else:
+                    syllabe += signe[1]
+            # Traitement de la musique.
+            elif musique == 1:
+                # Si une parenthèse se ferme, un neume se termine.
+                if signe[1] == ')':
+                    # Calcul des durées : la dernière note d'un
+                    # neume n'est jamais plus courte que la pénultième.
+                    try:
+                        if neume[-1].duree < neume[-2].duree:
+                            neume[-1].duree = neume[-2].duree
+                    except IndexError: pass
+                    # L'exception suivante est levée si le dernier
+                    # symbole est une barre. En ce cas, on s'assure
+                    # (ce qui ne devrait jamais arriver en fin de neume)
+                    # qu'elle n'était pas précédée de notes auxquelles
+                    # appliquer le traitement précédent.
+                    except AttributeError:
+                        try:
+                            if neume[-2].duree < neume[-3].duree:
+                                neume[-2].duree = neume[-3].duree
+                        except IndexError: pass
+                    # Ajout du neume à la mélodie, de la syllabe au mot,
+                    # réinitialisation de la syllabe et du neume.
+                    mot.append(syllabe)
+                    melodie.append(neume)
+                    syllabe = ''
+                    neume = []
+                    musique = 0
+                # Ignorer les commandes personnalisées. Attention : si
+                # l'auteur du gabc a de "mauvaises pratiques" et abuse de
+                # telles commandes, cela peut amener des incohérences.
+                # Pour cette raison, on renvoie un avertissement.
+                if signe[1] == '[':
+                    musique = 2
+                    print("Commande personnalisée ignorée")
+                # A priori, on s'attend à rencontrer une note.
                 if signe[1].lower() in gabcnotes:
-                    j = 0
-                    s = 0
-                    note = Note(gabc = signe, bemol = b)
-                    notes.append(note)
-                    # Si la note est la première d'un élément
-                    # neumatique, commencer la ligature.
-                    if premierenote:
-                        notes[-1].ly += '['
-                        premierenote = False
-                    if not neumeouvert:
-                        notes[-1].ly += '('
-                        neumeouvert = True
-                    # La variable memoire sert à garder le souvenir de
-                    # la hauteur de note, afin de traiter certains cas
-                    # particuliers (altérations, distrophas…).
-                    memoire = signe
+                    signesspeciaux = 0
+                    notesretenues = 0
+                    neume.append(
+                        Note(
+                            gabc = signe, bemol = b
+                            )
+                        )
                 # Strophas, oriscus, etc.
                 elif signe[1] in speciaux:
-                    s += 1
+                    signesspeciaux += 1
                     # Si le signe spécial est répété, répéter la note.
                     # On obtient ainsi une "répercussion" (très
                     # matérielle, convenons-en…).
-                    if s > 1:
-                        note = Note(gabc = memoire, bemol = b)
-                        notes.append(note)
+                    if signesspeciaux > 1:
+                        neume.append(
+                            Note(
+                                gabc = neume[-1].gabc,
+                                bemol = b
+                                )
+                            )
                 # Durées.
                 elif signe[1] == episeme:
-                    neumeencours = neume
-                    j -= 1
-                    notes[j].duree = DUREE_EPISEME
-                    notes[j].ly += '--'
+                    notesretenues -= 1
+                    neume[notesretenues].duree = DUREE_EPISEME
+                    neume[notesretenues].ly += '--'
                 elif signe[1] == point:
-                    j -= 1
-                    notes[j].duree = DUREE_POINT
-                    notes[j].ly = notes[j].ly.replace('8','4')
-                    notes[j].ly = notes[j].ly.replace('[','')
-                    notes[j].ly = notes[j].ly.replace(']','')
-                    ccl = False
-                    k = 0
-                    while not ccl:
-                        k += 1
-                        try:
-                            ccl = notes[j-k].ly_ccl(False)
-                        except IndexError: pass
-                    premierenote = True
+                    notesretenues -= 1
+                    neume[notesretenues].duree = DUREE_POINT
+                    neume[notesretenues].ly = neume[notesretenues].ly\
+                                                    .replace('8','4')
                 elif signe[1] == quilisma:
-                    notes[-2].duree = DUREE_AVANT_QUILISMA
-                    if '--' not in notes[-2].ly: notes[-2].ly += '--'
-                    notes[-1].ly += '\prall'
+                    neume[-2].duree = DUREE_AVANT_QUILISMA
+                    if '--' not in neume[-2].ly: neume[-2].ly += '--'
+                    neume[-1].ly += '\prall'
                 # Altérations.
                 elif signe[1] == bemol:
-                    b = b + memoire[1]
-                    if '[' in notes[-1].ly: premierenote = True
-                    if '(' in notes[-1].ly:
-                        notes[-1].ly.replace('(','')
-                        neumeouvert = False
-                    notes = notes[:-1]
+                    b = b + neume[-1].b
+                    neume = neume[:-1]
                 elif signe[1] == becarre:
-                    re.sub(memoire[1],'',b)
-                    if '[' in notes[-1].ly: premierenote = True
-                    if '(' in notes[-1].ly:
-                        notes[-1].ly.replace('(','')
-                        neumeouvert = False
-                    notes = notes[:-1]
+                    b = b.replace(neume[-1],'')
+                    neume = neume[:-1]
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
                 # des coupures, s'assurer pour le moins que la dernière
                 # note d'un élément n'est pas plus courte que la
                 # pénultième.
                 elif signe[1] in coupures:
-                    if notes[-1].duree < notes[-2].duree:
-                        notes[-1].duree = notes[-2].duree
-                    ### Discutable : faut-il couper le "neume" en
-                    ### notation moderne (ce que ne fait pas
-                    ### Solesmes) quand on rencontre une coupure
-                    ### neumatique ?
-                    notes[-1].ly_ccl(premierenote)
-                    premierenote = True
+                    try:
+                        if neume[-1].duree < neume[-2].duree:
+                            neume[-1].duree = neume[-2].duree
+                    except IndexError: pass
                 # Une barre annule les altérations accidentelles,
                 # et provoque un "posé", d'où léger rallongement de la
                 # note précédente.
-                ### TODO: les barres en Lilypond seraient à revoir.
                 elif signe[1] in barres:
+                    if signe[1] == ';': pose = .5
+                    elif signe[1] == ':': pose = 1
+                    else: pose = 0
+                    try:
+                        neume[-1].duree += pose
+                    except IndexError:
+                        melodie[-1][-1].duree += pose
+                    # Si l'exception suivante est levée, c'est que l'on
+                    # a affaire à une double barre.
+                    except AttributeError:
+                        neume = neume[:-1]
+                        signe = (signe[0],'::')
                     b = '' + self.b
-                    notes[-1].ly_ccl(premierenote)
-                    premierenote = True
-                    if signe[1] == ',':
-                        notes[-1].ly += ''' \\bar"'"\n'''
-                    if signe[1] == ';':
-                        notes[-1].duree += .5
-                        notes[-1].ly += ''' \\bar"'"\n'''
-                    elif signe[1] == ':':
-                        notes[-1].duree += 1
-                        if ' \\bar"|"' in notes[-1].ly:
-                            notes[-1].ly = notes[-1].ly.replace('|','||')
-                        else: notes[-1].ly += ' \\bar"|"\n'
-                    notes[-1].ly = notes[-1].ly.replace('\\bar""\n \\bar',
-                                                        '\\bar')
-                else:
-                    # Dans le calcul des durées : la dernière note d'un
-                    # neume n'est jamais plus courte que la pénultième.
-                    if neumeencours == neume \
-                    and notes[-1].duree < notes[-2].duree:
-                        notes[-1].duree = notes[-2].duree
-                    if signe[1] == ')':
-                        musique = 0
-                        try:
-                            ccl = False
-                            k = 0
-                            while not ccl:
-                                k += 1
-                                ccl = notes[-1].ly_ccl(premierenote)
-                            premierenote = True
-                        except IndexError: pass
-            # Ignorer les commandes personnalisées. Attention : si
-            # l'auteur du gabc a de "mauvaises pratiques" et abuse de
-            # telles commandes, cela peut amener des incohérences.
-            # Pour cette raison, on renvoie un avertissement.
-                    if signe[1] == '[':
-                        musique = 2
-                        print("Commande personnalisée ignorée")
-            # Traitement du texte.
-            elif musique == 0:
-                if signe[1] == '(':
-                    musique = 1
-                    neume += 1
-                    mot.append('')
-                    # La prochaine note est la première d'un élément
-                    premierenote = True
-                    # La prochaine lettre est la première d'une syllabe
-                    premierelettre = True
-                # Ignorer les accolades
-                # (qui servent à centrer les notes sur une lettre).
-                elif signe[1] in ('{', '}'): pass
-                else:
-                    # Le changement de mot en grégorien implique
-                    # l'annulation des altérations accidentelles.
-                    if signe[1] == ' ':
-                        if premierelettre:
-                            b = '' + self.b
-                            texte.append(mot)
-                            mot = ['']
-                            try:
-                                if '\\bar' not in notes[-1].ly:
-                                    notes[-1].ly += ' \\bar""\n'
-                            except IndexError: pass
-                            premierelettre = False
-                        else:
-                            mot[-1] += signe[1]
-                    else:
-                        if neumeouvert and len(mot[-1]) == 0:
-                            notes[-1].ly += ')'
-                            notes[-1].ly = notes[-1].ly\
-                                .replace(''' \\bar""\n)''',''') \\bar""\n''')\
-                                .replace(''' \\bar"'"\n)''',''') \\bar"'"\n''')\
-                                .replace(''' \\bar"|"\n)''',''') \\bar"'"\n''')\
-                                .replace(''' \\bar"||"\n)''',''') \\bar"'"\n''')\
-                                .replace('()','')
-                            neumeouvert = False
-                        mot[-1] += signe[1]
-            # "Traitement" (par le vide !) des commandes spéciales.
+                    neume.append(Barre(gabc = signe))
+            # Traitement par le vide des commandes personnalisées.
             elif musique == 2:
                 if signe[1] == ']':
                     musique = 1
-        # La dernière double-barre est une double-barre conclusive.
-        notes[-1].ly = notes[-1].ly.replace('||','|.').replace('(','')
-        return notes, texte[1:]
+        return melodie, texte
+
     def transposer(self):
         """Transposition de la partition automatiquement
         sur une tessiture moyenne."""
-        # Calcul si nécessaire de la hauteur idéale.
+        # Calcul de la hauteur idéale.
         self.transposition = 66 - int(sum(self.tessiture.values())/2)
-        ## Transposition effective. MAJ : on laisse cela aux
-        ## différentes classes traitant chaque sortie.
-        #for i in range(len(self.musique)):
-        #    self.musique[i].hauteur += t
     @property
     def tessiture(self):
         """Notes extrêmes de la mélodie"""
         minimum = maximum = 0
         # Parcours de toutes les notes de la mélodie, pour déterminer
         # la plus haute et la plus basse.
-        for note in self.musique:
-            if minimum == 0 or note.hauteur < minimum:
-                minimum = note.hauteur
-            if note.hauteur > maximum:
-                maximum = note.hauteur
+        for neume in self.musique:
+            for note in (notes
+                        for notes in neume
+                        if type(notes) == Note):
+                if minimum == 0 or note.hauteur < minimum:
+                    minimum = note.hauteur
+                if note.hauteur > maximum:
+                    maximum = note.hauteur
         #### TODO: voir pourquoi la bidouille abjecte qui suit est  ####
         #### nécessaire…                                            ####
         minimum += 1
@@ -562,18 +530,6 @@ class Note:
         # par la suite.
         note += '8'
         return note
-    def ly_ccl(self,premierenote):
-        if premierenote:
-            return True
-        if '4' in self.ly:
-            return False
-        if '\n' not in self.ly:
-            if ']' not in self.ly:
-                if '[' in self.ly:
-                    self.ly = self.ly.replace('[','')
-                else:
-                    self.ly += ']'
-            return True
     def g2mid(self,gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
@@ -649,6 +605,22 @@ class Note:
             hauteur -= 1
         return hauteur,duree
 
+class Barre:
+    def __init__(self,**parametres):
+        if 'gabc' in parametres:
+            self.gabc = parametres['gabc']
+    @property
+    def ly(self):
+        # TODO: trouver une meilleure expression pour la demi-barre.
+        return '''\\bar "%s"''' % self.nom
+    @property
+    def nom(self):
+        return {',':"'",
+                ';':"'",
+                ':':"|",
+                '::':"||"
+                }[self.gabc[1]]
+
 class Midi:
     """Musique midi"""
     def __init__(self,partition,tempo):
@@ -664,18 +636,21 @@ class Midi:
         self.sortieMidi.addProgramChange(piste,0,temps,74)
         # À partir des propriétés de la note, création des évènements
         # MIDI.
-        for note in partition.musique:
-            channel = 0
-            pitch = note.hauteur + partition.transposition
-            duree = note.duree
-            volume = 127
-            self.sortieMidi.addNote(piste,
-                                    channel,
-                                    pitch,
-                                    temps,
-                                    duree,
-                                    volume)
-            temps += duree
+        for neume in partition.musique:
+            for note in (notes
+                        for notes in neume
+                        if type(notes) == Note):
+                channel = 0
+                pitch = note.hauteur + partition.transposition
+                duree = note.duree
+                volume = 127
+                self.sortieMidi.addNote(piste,
+                                        channel,
+                                        pitch,
+                                        temps,
+                                        duree,
+                                        volume)
+                temps += duree
     def ecrire(self,chemin):
         """Écriture effective du fichier MIDI"""
         binfile = open(chemin, 'wb')
@@ -690,24 +665,64 @@ class Lily:
             "c","des","d","ees","e","f",
             "fis","g","aes","a","bes","b","c"
             )[(partition.transposition + 11)%24]
-        self.musique = ' '.join(note.ly for note in partition.musique)
+        self.musique = self.notes(partition.musique)
         self.tonalite = partition.tonalite[0]
-        self.texte = self.paroles(partition.texte)
-    def paroles(self,texte):
+        self.texte = self.paroles(partition.texte,partition.musique)
+    def notes(self,musique):
+        notes = ''
+        prochainenote = ''
+        ligatureouverte = False
+        noire = False
+        for neume in musique:
+            for i,note in enumerate(neume):
+                if type(note) == Note:
+                    noire = (note.ly[-1] == '4')
+                    if ligatureouverte and noire:
+                        notes += '] '
+                        ligatureouverte = False
+                    notes += ' ' + note.ly
+                    if i == 0:
+                        try:
+                            if neume[i+1]:
+                                notes += '('
+                                if not noire:
+                                    notes += '['
+                                    ligatureouverte = True
+                        except IndexError: pass
+                    elif not ligatureouverte and not noire:
+                        notes += '['
+                        ligatureouverte = True
+                elif type(note) == Barre:
+                    if ligatureouverte:
+                        notes += ']'
+                        ligatureouverte = False
+                    notes += ' ' + note.ly + '\n'
+            if i > 0:
+                notes += ')'
+                if ligatureouverte:
+                    notes += ']'
+                    ligatureouverte = False
+        return notes
+    def paroles(self,texte,musique):
         paroles = ''
-        for nmot, mot in enumerate(texte):
-            for nsyllabe, syllabe in enumerate(mot):
-                if syllabe == '':
-                    try:
-                        if texte[nmot+1][0] == '*':
-                            if texte[nmot+2] == '':
-                                paroles += '_'
-                    except IndexError: pass
+        paroleprecedente = ''
+        i = 0
+        for mot in texte:
+            parole = ' -- '.join([syllabes.replace(' ','_')
+                                for syllabes in mot])
+            if paroleprecedente != '':
+                if parole != '':
+                    paroles += '_' + paroleprecedente
+                else: parole = paroleprecedente
+            nnotes = 0
+            for syllabe in mot:
+                nnotes += len([notes for notes in musique[i] if type(notes) == Note])
+                i += 1
+            if nnotes != 0:
+                paroles += ' ' + parole
+                paroleprecedente = ''
+            else: paroleprecedente = parole
         return paroles\
-            .replace(' :','_:\n')\
-            .replace(' ;','_;\n')\
-            .replace(' !','_!\n')\
-            .replace('. ','.\n ')\
             .replace('*','&zwj;*')
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
