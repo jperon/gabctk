@@ -4,13 +4,15 @@
 
 #### Variables globales ################################################
 
+TITRE = "Cantus"
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
-ENTETE_LILYPOND = (
+LILYPOND_ENTETE = (
 '''\\version "2.16"
 
 \header {
+  title = "%(titre)s"
   tagline = ""
   composer = ""
 }
@@ -66,7 +68,7 @@ def gabc2tk(commande,arguments):
     try:
         opts, args = getopt.getopt(
                                 arguments,
-                                "hi:o:l:e:t:d:a:v",
+                                "hi:o:l:e:t:d:n:a:v",
                                 [
                                     "help",                             # Aide
                                     "entree=",                          # Fichier gabc
@@ -75,6 +77,7 @@ def gabc2tk(commande,arguments):
                                     "export=",                          # Fichier texte
                                     "tempo=",                           # Tempo de la musique
                                     "transposition=",                   # Transposition
+                                    "titre=",                           # Titre de la pièce
                                     "alerter=",                         # Caractères à signaler s'ils se trouvent dans le gabc
                                     "verbose"                           # Verbosité de la sortie
                                 ]
@@ -96,6 +99,9 @@ def gabc2tk(commande,arguments):
             tempo = int(arg)
         elif opt in ("-d", "--transposition"):
             transposition = int(arg)
+        elif opt in ("-n", "--titre"):
+            global TITRE
+            TITRE = arg
         elif opt in ("-a", "--alerter"):
             alertes.append(arg)
         elif opt in ("-v", "--verbose"):
@@ -131,7 +137,10 @@ def gabc2tk(commande,arguments):
     # Afficher la tessiture obtenue après transposition.
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
-        + Note(hauteur = partition.tessiture['maximum']).nom)
+        + Note(hauteur = partition.tessiture['maximum']).nom
+        + " - "
+        + str(partition.transposition)
+        )
     # Créer les objets midi et lilypond.
     midi = Midi(partition,tempo)
     lily = Lily(partition,tempo)
@@ -189,6 +198,7 @@ def aide(commande,erreur,code):
             + '[-e <texte.txt>] '
             + '[-t <tempo>] '
             + '[-d <transposition>] '
+            + '[-n <titre>]'
             + '[-a <alertes>] '
             + '[-v]''')
     # Renvoyer le code correspondant à l'erreur,
@@ -709,7 +719,7 @@ class Lily:
             "fis,","g,","aes,","a,","bes,","b,",
             "c","des","d","ees","e","f",
             "fis","g","aes","a","bes","b","c"
-            )[(partition.transposition + 11)%24]
+            )[(partition.transposition + 12)%24]
         self.musique = self.notes(partition.musique)
         self.tonalite = partition.tonalite[0]
         self.texte = self.paroles(partition.texte,partition.musique)
@@ -855,7 +865,8 @@ class Lily:
             .replace("<sp>'Œ</sp>",'Œ́')
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
-        sortie.ecrire(ENTETE_LILYPOND % {
+        sortie.ecrire(LILYPOND_ENTETE % {
+                        'titre': TITRE,
                         'tonalite': self.tonalite,
                         'musique': self.musique,
                         'transposition': self.transposition,
@@ -871,7 +882,7 @@ class Midi:
         temps = 0
         self.sortieMidi = MIDIFile(1)
         # Nom de la piste.
-        self.sortieMidi.addTrackName(piste,temps,"Gregorien")
+        self.sortieMidi.addTrackName(piste,temps,TITRE)
         # Tempo.
         self.sortieMidi.addTempo(piste,temps, tempo)
         # Instrument (74 : flûte).
