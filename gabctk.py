@@ -138,8 +138,9 @@ def gabc2tk(commande,arguments):
     print(Note(hauteur = partition.tessiture['minimum']).nom
         + " - "
         + Note(hauteur = partition.tessiture['maximum']).nom
-        + " - "
+        + " ("
         + str(partition.transposition)
+        + ')'
         )
     # Créer les objets midi et lilypond.
     midi = Midi(partition,tempo)
