@@ -328,6 +328,8 @@ class Partition:
                     # mais on ignore les espaces répétitifs.
                     else:
                         syllabe = (syllabe + ' ').replace('  ',' ')
+                # Les accolades pour centrer les notes sont ignorées.
+                elif signe[1] in ['{','}']: pass
                 # Ce qui n'est pas espace est considéré comme lettre.
                 else:
                     syllabe += signe[1]
