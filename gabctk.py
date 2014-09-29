@@ -389,7 +389,9 @@ class Partition:
                                 bemol = b
                                 )
                             )
-                # Durées.
+                # Durées et épisèmes.
+                elif signe[1] == ictus:
+                    neume[-1].ly += '-|'
                 elif signe[1] == episeme:
                     notesretenues -= 1
                     neume[notesretenues].duree = DUREE_EPISEME
@@ -692,7 +694,7 @@ class Lily:
                 # Traitement des notes.
                 if type(note) == Note:
                     # La noire va un peu nous compliquer la vie.
-                    noire = (note.ly[-1] == '4')
+                    noire = ('4' in note.ly)
                     # On ferme la ligature avant la noire.
                     if ligatureouverte and noire:
                         notes += '] '
