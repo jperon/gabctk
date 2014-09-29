@@ -744,17 +744,35 @@ class Lily:
                     ligatureouverte = False
         return notes
     def paroles(self,texte,musique):
+        # Initialisation des variables.
         paroles = ''
         paroleprecedente = ''
+        # Cet indice va nous permettre de synchroniser les syllabes avec
+        # les neumes.
         i = 0
         for mot in texte:
+            # Former le mot lilypond à partir des syllabes.
             parole = ' -- '.join([syllabes.replace(' ','_')
                                 for syllabes in mot])
+            # S'il y a un mot précédent à traiter, c'est qu'il n'était
+            # associé qu'à une barre (ou à un neume vide, ce qui ne
+            # devrait pas arriver), ce qui est souvent le cas, par
+            # exemple, des étoiles. En ce cas :
+            #   − ou bien la barre est suivie de notes sans paroles
+            #     associées, et on leur associe alors le mot précédent ;
+            #   − ou bien elle est suivie d'un nouveau mot, et le mot
+            #     précédent est alors rattaché à celui d'avant.
             if paroleprecedente != '':
                 if parole != '':
                     paroles += '_' + paroleprecedente
                 else: parole = paroleprecedente
+            # Si après tout cela le mot est toujours vide, c'est que le
+            # neume est long et coupé par des barres : il faut alors
+            # ajouter des syllabes fantômes aux paroles lilypond.
             if parole == '': parole = '_'
+            # On regarde ici s'il y a ou non des notes associées
+            # au mot ; s'il n'y en a pas, on le met en réserve pour le
+            # traitement décrit ci-dessus.
             nnotes = 0
             for syllabe in mot:
                 nnotes += len([notes for notes in musique[i] if type(notes) == Note])
@@ -763,6 +781,10 @@ class Lily:
                 paroles += ' ' + parole
                 paroleprecedente = ''
             else: paroleprecedente = parole
+        # On renvoie ici le résultat du traitement.
+        # Lilypond n'aime pas les étoiles : on doit donc appliquer un
+        # filtre.
+        # TODO: ajouter d'autres filtres pour traiter les balises.
         return paroles\
             .replace('*','&zwj;*')
     def ecrire(self,chemin):
