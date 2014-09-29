@@ -786,11 +786,26 @@ class Lily:
         # On renvoie ici le résultat du traitement.
         # Lilypond n'aime pas les étoiles : on doit donc appliquer un
         # filtre.
-        # TODO: ajouter d'autres filtres pour traiter les balises.
+        # TODO: voir comment traiter les gras et italiques en lilypond
+        # au sein d'une syllabe.
         return paroles\
             .replace('*','&zwj;*')\
             .replace('<i>','').replace('</i>','')\
-            .replace('<b>','').replace('</b>','')
+            .replace('<b>','').replace('</b>','')\
+            .replace('<sp>R/</sp>','℟')\
+            .replace('<sp>V/</sp>','℣')\
+            .replace('<sp>ae</sp>','æ')\
+            .replace("<sp>'ae</sp>",'ǽ')\
+            .replace("<sp>'æ</sp>",'ǽ')\
+            .replace('<sp>AE</sp>','Æ')\
+            .replace("<sp>'AE</sp>",'Ǽ')\
+            .replace("<sp>'Æ</sp>",'Ǽ')\
+            .replace('<sp>oe</sp>','œ')\
+            .replace("<sp>'oe</sp>",'œ́')\
+            .replace("<sp>'œ</sp>",'œ́')\
+            .replace('<sp>OE</sp>','Œ')\
+            .replace("<sp>'OE</sp>",'Œ́')\
+            .replace("<sp>'Œ</sp>",'Œ́')
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
         sortie.ecrire(ENTETE_LILYPOND % {
