@@ -786,7 +786,9 @@ class Lily:
         # filtre.
         # TODO: ajouter d'autres filtres pour traiter les balises.
         return paroles\
-            .replace('*','&zwj;*')
+            .replace('*','&zwj;*')\
+            .replace('<i>','').replace('</i>','')\
+            .replace('<b>','').replace('</b>','')
     def ecrire(self,chemin):
         sortie = FichierTexte(chemin)
         sortie.ecrire(ENTETE_LILYPOND % {
