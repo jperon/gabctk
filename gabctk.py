@@ -71,7 +71,7 @@ def gabc2tk(commande,arguments):
                                     "alerter=",                         # Caractères à signaler s'ils se trouvent dans le gabc
                                     "verbose"                           # Verbosité de la sortie
                                 ]
-                                )
+                            )
     except getopt.GetoptError:
         aide(commande,'Argument invalide',1)
     for opt, arg in opts:
@@ -290,6 +290,9 @@ class Partition:
         bemol = "x"
         becarre = "y"
         coupures = '/ '
+        # Le '!' sert, en ce qui nous concerne, ou bien à rien, ou bien
+        # à rendre une coupure insécable.
+        cesures = '!'
         # Initialisation des variables.
         texte = []
         mot = []
@@ -297,6 +300,7 @@ class Partition:
         melodie = []
         neume = []
         b = self.b
+        cesure = False
         # La variable musique est un drapeau :
         # 0 indique que l'on est dans le texte ;
         # 1 indique que l'on est dans un neume, entre deux parenthèses ;
@@ -344,15 +348,23 @@ class Partition:
                             neume[-1].duree = neume[-2].duree
                     except IndexError: pass
                     # L'exception suivante est levée si le dernier
-                    # symbole est une barre. En ce cas, on s'assure
-                    # (ce qui ne devrait jamais arriver en fin de neume)
-                    # qu'elle n'était pas précédée de notes auxquelles
-                    # appliquer le traitement précédent.
+                    # symbole est une barre ou une coupure. En ce cas,
+                    # on s'assure (ce qui ne devrait jamais arriver
+                    # en fin de neume) qu'elle n'était pas précédée
+                    # de notes auxquelles appliquer le traitement
+                    # précédent.
                     except AttributeError:
                         try:
                             if neume[-2].duree < neume[-3].duree:
                                 neume[-2].duree = neume[-3].duree
                         except IndexError: pass
+                        except AttributeError:
+                            try:
+                                if neume[-3].duree < neume[-4].duree:
+                                    neume[-3].duree = neume[-4].duree
+                            except AttributeError:
+                                if neume[-4].duree < neume[-5].duree:
+                                    neume[-4].duree = neume[-5].duree
                     # Ajout du neume à la mélodie, de la syllabe au mot,
                     # réinitialisation de la syllabe et du neume.
                     mot.append(syllabe)
@@ -422,6 +434,37 @@ class Partition:
                         if neume[-1].duree < neume[-2].duree:
                             neume[-1].duree = neume[-2].duree
                     except IndexError: pass
+                    # Cas où le symbole précédent n'était pas une note.
+                    except AttributeError:
+                        try:
+                            if neume[-2].duree < neume[-3].duree:
+                                neume[-2].duree = neume[-3].duree
+                        except AttributeError:
+                            try:
+                                if neume[-3].duree < neume[-4].duree:
+                                    neume[-3].duree = neume[-4].duree
+                            except AttributeError:
+                                if neume[-4].duree < neume[-5].duree:
+                                    neume[-4].duree = neume[-5].duree
+                    # Traitement des coupures doubles (ou plus, mais
+                    # cela ne devrait pas arriver).
+                    if neume[-1].gabc[1] == ''\
+                    and type(neume[-2]) == Coupure:
+                            neume = neume[:-1]
+                            cesure = True
+                    if type(neume[-1]) == Coupure:
+                        neume[-1] = Coupure(
+                                    gabc = (signe[0],
+                                        neume[-1].gabc[1] + signe[1]
+                                        )
+                                    )
+                    else:
+                        neume.append(Coupure(gabc = signe))
+                        if not cesure:
+                            neume.append(Barre(gabc = (signe[0],'')))
+                        else: cesure = False
+                elif signe[1] in cesures:
+                    cesure = True
                 # Une barre annule les altérations accidentelles,
                 # et provoque un "posé", d'où léger rallongement de la
                 # note précédente.
@@ -619,11 +662,23 @@ class Barre:
         return '''\\bar "%s"''' % self.nom
     @property
     def nom(self):
-        return {',':"'",
+        return {'':"",
+                ',':"'",
                 ';':"'",
                 ':':"|",
                 '::':"||"
                 }[self.gabc[1]]
+
+class Coupure:
+    def __init__(self,**parametres):
+        if 'gabc' in parametres:
+            self.gabc = parametres['gabc']
+    @property
+    def ly(self):
+        return ''
+    @property
+    def nom(self):
+        return self.gabc[1]
 
 class Midi:
     """Musique midi"""
@@ -722,6 +777,10 @@ class Lily:
                     elif not ligatureouverte and not noire:
                         notes += '['
                         ligatureouverte = True
+                # Traitement des coupures.
+                elif type(note) == Coupure:
+                    notes += '] '
+                    ligatureouverte = False
                 # Traitement des barres.
                 elif type(note) == Barre:
                     # On ferme la ligature avant la barre.
@@ -744,7 +803,9 @@ class Lily:
                 if ligatureouverte:
                     notes += ']'
                     ligatureouverte = False
-        return notes
+        # On renvoie la partition ainsi obtenue, en mettant le cas
+        # échéant les épisèmes horizontaux avant les verticaux.
+        return notes.replace('-|--','---|')
     def paroles(self,texte,musique):
         # Initialisation des variables.
         paroles = ''
