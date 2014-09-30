@@ -315,6 +315,7 @@ class Partition:
         point = '.'
         ictus = "'"
         quilisma = 'w'
+        liquescence = '~'
         speciaux = 'osvOSV'
         barres = '`,;:'
         bemol = "x"
@@ -447,12 +448,14 @@ class Partition:
                     neume[-2].duree = DUREE_AVANT_QUILISMA
                     if '--' not in neume[-2].ly: neume[-2].ly += '--'
                     neume[-1].ly += '\prall'
+                elif signe[1] == liquescence:
+                    neume[-1].ly == '\tiny %s \normalsize' % neume[-1].ly
                 # Altérations.
                 elif signe[1] == bemol:
-                    b = b + neume[-1].b
+                    b = b + neume[-1].gabc[1]
                     neume = neume[:-1]
                 elif signe[1] == becarre:
-                    b = b.replace(neume[-1],'')
+                    b = b.replace(neume[-1].gabc[1],'')
                     neume = neume[:-1]
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
