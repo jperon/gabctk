@@ -847,6 +847,9 @@ class Lily:
                 paroles += ' ' + parole
                 paroleprecedente = ''
             else: paroleprecedente = parole
+        # Les balises <v></v> peuvent contenir tout… et n'importe quoi !
+        # Cela ne plaît généralement pas à lilypond, donc on les ignore.
+        paroles = re.sub('<v>.*?</v>','',paroles)
         # On renvoie ici le résultat du traitement.
         # Lilypond n'aime pas les étoiles : on doit donc appliquer un
         # filtre.
