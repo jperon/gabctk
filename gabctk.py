@@ -449,7 +449,7 @@ class Partition:
                     if '--' not in neume[-2].ly: neume[-2].ly += '--'
                     neume[-1].ly += '\prall'
                 elif signe[1] == liquescence:
-                    neume[-1].ly == '\tiny %s \normalsize' % neume[-1].ly
+                    neume[-1].ly = '\\tiny %s \\normalsize' % neume[-1].ly
                 # Altérations.
                 elif signe[1] == bemol:
                     b = b + neume[-1].gabc[1]
@@ -805,7 +805,10 @@ class Lily:
                     ligatureouverte = False
         # On renvoie la partition ainsi obtenue, en mettant le cas
         # échéant les épisèmes horizontaux avant les verticaux.
-        return notes.replace('-|--','---|')
+        return notes\
+                    .replace('-|--','---|')\
+                    .replace(' \\normalsize)',') \\normalsize')\
+                    .replace(' \\normalsize]','] \\normalsize')
     def paroles(self,texte,musique):
         # Initialisation des variables.
         paroles = ''
