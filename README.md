@@ -14,7 +14,7 @@ Gabctk
 ------
 
 Ce script est dérivé de [gabc2mid](https://github.com/jperon/gabc2mid) ; l'optique du projet s'étant élargie, gabc2mid restera tel qu'il est à présent (sauf correction de bug), et les développements auront lieu ici.
-Gabctk parcourt le code *gabc*, en extrait ce qui concerne la mélodie, et produit celle-ci sous la forme d'un fichier midi. Il peut aussi extraire le texte dans un fichier texte. La syntaxe est la suivante :
+Gabctk parcourt le code *gabc*, en extrait ce qui concerne la mélodie, et produit celle-ci sous la forme d'un fichier midi et/ou lilypond. Il peut aussi extraire le texte dans un fichier texte. La syntaxe est la suivante :
 
     gabctk.py -i </chemin/vers/le/fichier/source.gabc> [-o </chemin/vers/le/fichier/destination.mid>] [-l </chemin/vers/le/fichier/destination.ly>] [-e </chemin/vers/le/fichier/destination.txt>] [-t tempo] [-d transposition] [-a alerte]
 
