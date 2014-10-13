@@ -147,6 +147,9 @@ def gabc2tk(commande,arguments):
     lily = Lily(partition,tempo)
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
+        ## les en-têtes gabc ;
+        print(gabc.entetes)
+        print()
         ## la partition gabc (sans les en-têtes) ;
         print(gabc.contenu)
         print()
@@ -223,11 +226,27 @@ class Gabc:
     def __init__(self,code):
         self.code = code
     @property
-    def contenu(self):
-        '''Partition gabc sans les en-têtes'''
+    def parties(self):
+        '''Tuple contenant d'une part les en-têtes,
+        d'autre part le corps du gabc.'''
         resultat = self.code
         regex = re.compile('%%\n')
-        resultat = regex.split(resultat)[1]
+        resultat = regex.split(resultat)
+        return resultat
+    @property
+    def entetes(self):
+        '''En-têtes du gabc, sous forme d'un dictionnaire.'''
+        resultat = {
+            info[0]:info[1].replace(';','')
+            for info in [ligne.split(':')
+                for ligne in self.parties[0].split('\n')
+                if ':' in ligne]
+            }
+        return resultat
+    @property
+    def contenu(self):
+        '''Partition gabc sans les en-têtes'''
+        resultat = self.parties[1]
         resultat = re.sub('%.*\n','',resultat)
         resultat = re.sub('\n',' ',resultat)
         return resultat
