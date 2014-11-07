@@ -237,7 +237,7 @@ class Gabc:
     def entetes(self):
         '''En-têtes du gabc, sous forme d'un dictionnaire.'''
         resultat = {
-            info[0]:info[1].replace(';','')
+            info[0]:info[1].replace(';','').replace('\r','')
             for info in [ligne.split(':')
                 for ligne in self.parties[0].split('\n')
                 if ':' in ligne]
