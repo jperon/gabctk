@@ -76,13 +76,14 @@ def gabc2tk(commande, arguments):
     try:
         opts, args = getopt.getopt(
             arguments,
-            "hi:o:l:e:t:d:n:a:v",
+            "hi:o:l:e:b:t:d:n:a:v",
             [
                 "help",             # Aide
                 "entree=",          # Fichier gabc
                 "midi=",            # Fichier MIDI
                 "lily=",            # Fichier ly
                 "export=",          # Fichier texte
+                "tab=",             # Fichier "tablature" pour accompagnement
                 "tempo=",           # Tempo de la musique
                 "transposition=",   # Transposition
                 "titre=",           # Titre de la pièce
@@ -103,6 +104,8 @@ def gabc2tk(commande, arguments):
             sortieLily = FichierTexte(arg)
         elif opt in ("-e", "--export"):
             texte = FichierTexte(arg)
+        elif opt in ("-b", "--tab"):
+            tab = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
             tempo = int(arg)
         elif opt in ("-d", "--transposition"):
@@ -144,18 +147,10 @@ def gabc2tk(commande, arguments):
         gabc=gabc.partition,
         transposition=transposition
         )
-    # Afficher la tessiture obtenue après transposition.
-    print(
-        Note(hauteur=partition.tessiture['minimum']).nom
-        + " - "
-        + Note(hauteur=partition.tessiture['maximum']).nom
-        + " ("
-        + str(partition.transposition)
-        + ')'
-        )
     # Créer les objets midi et lilypond.
     midi = Midi(partition, tempo)
     lily = Lily(partition, tempo)
+    i=0
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
         ## les en-têtes gabc ;
@@ -178,6 +173,15 @@ def gabc2tk(commande, arguments):
         ## les paroles en format lilypond
         print(lily.texte)
         print()
+        ## la tessiture obtenue après transposition.
+        print(
+            Note(hauteur=partition.tessiture['minimum']).nom
+            + " - "
+            + Note(hauteur=partition.tessiture['maximum']).nom
+            + " ("
+            + str(partition.transposition)
+            + ')'
+            )
     # Créer le fichier midi.
     try:
         midi.ecrire(sortieMidi.chemin)
@@ -204,25 +208,44 @@ def gabc2tk(commande, arguments):
         texte.ecrire(paroles + '\n')
     except UnboundLocalError:
         pass
+    # Si l'utilisateur l'a demandé,
+    # écrire une tablature dans un fichier texte.
+    try:
+        tablature = ''
+        for mot in partition.texte:
+            for syllabe in mot:
+                tablature += (
+                    '{}\t{}\n'.format(
+                        syllabe,
+                        ' '.join([note.ly for note in partition.musique[i]])
+                        )
+                    )
+                i+=1
+            tablature += '//\n'
+        tab.ecrire(tablature + '\n')
+    except UnboundLocalError:
+        pass
 
 
 def aide(commande, erreur, code):
     """Affichage de l'aide"""
     # Tenir compte du message propre à chaque erreur, ainsi que du nom
     # sous lequel la commande a été appelée.
-    print('Erreur : '
-            + erreur + '\n'
-            + 'Usage : \n    '
-            + commande + ' '
-            + '-i <input.gabc> '
-            + '[-o <output.mid>] '
-            + '[-l <output.ly>] '
-            + '[-e <texte.txt>] '
-            + '[-t <tempo>] '
-            + '[-d <transposition>] '
-            + '[-n <titre>]'
-            + '[-a <alertes>] '
-            + '[-v]''')
+    print(
+        'Erreur : '
+        + erreur + '\n'
+        + 'Usage : \n    '
+        + commande + ' '
+        + '-i <input.gabc> '
+        + '[-o <output.mid>] '
+        + '[-l <output.ly>] '
+        + '[-e <texte.txt>] '
+        + '[-t <tempo>] '
+        + '[-d <transposition>] '
+        + '[-n <titre>]'
+        + '[-a <alertes>] '
+        + '[-v]'''
+        )
     # Renvoyer le code correspondant à l'erreur,
     # pour interagir avec d'autres programmes.
     sys.exit(code)
@@ -250,6 +273,7 @@ class Gabc:
     """Description du fichier gabc"""
     def __init__(self, code):
         self.code = code
+
     @property
     def parties(self):
         '''Tuple contenant d'une part les en-têtes,
@@ -258,60 +282,65 @@ class Gabc:
         regex = re.compile('%%\n')
         resultat = regex.split(resultat)
         return resultat
+
     @property
     def entetes(self):
         '''En-têtes du gabc, sous forme d'un dictionnaire.'''
         resultat = {
-            info[0]:':'.join(info[1:]).replace(';', '').replace('\r', '')
-            for info in [ligne.split(':')
+            info[0]: ':'.join(info[1:]).replace(';', '').replace('\r', '')
+            for info in [
+                ligne.split(':')
                 for ligne in self.parties[0].split('\n')
-                if ':' in ligne]
+                if ':' in ligne
+                ]
             }
         categories = {
-                'alleluia':'alleluia',
-                'antiphona':'antiphona',
-                'antienne':'antiphona',
-                'antiphon':'antiphona',
-                'communio':'communio',
-                'communion':'communio',
-                'graduale':'graduale',
-                'graduel':'graduale',
-                'gradual':'graduale',
-                'hymnus':'hymnus',
-                'hymne':'hymnus',
-                'hymn':'hymnus',
-                'introitus':'introitus',
-                'introit':'introitus',
-                'kyriale':'kyriale',
-                'lectio':'lectio',
-                'leçon':'lectio',
-                'lecon':'lectio',
-                'lesson':'lectio',
-                'offertorium':'offertorium',
-                'offertoire':'offertorium',
-                'offertory':'offertorium',
-                'responsorium':'responsorium',
-                'responsum':'responsorium',
-                'répons':'responsorium',
-                'repons':'responsorium',
-                'response':'responsorium',
-                'sequentia':'sequentia',
-                'sequence':'sequentia',
-                'tractus':'tractus',
-                'trait':'tractus',
-                'tract':'tractus',
-                'versus':'versus',
-                'verset':'versus',
-                'verse':'versus',
-                }
+            'alleluia': 'alleluia',
+            'antiphona': 'antiphona',
+            'antienne': 'antiphona',
+            'antiphon': 'antiphona',
+            'communio': 'communio',
+            'communion': 'communio',
+            'graduale': 'graduale',
+            'graduel': 'graduale',
+            'gradual': 'graduale',
+            'hymnus': 'hymnus',
+            'hymne': 'hymnus',
+            'hymn': 'hymnus',
+            'introitus': 'introitus',
+            'introit': 'introitus',
+            'kyriale': 'kyriale',
+            'lectio': 'lectio',
+            'leçon': 'lectio',
+            'lecon': 'lectio',
+            'lesson': 'lectio',
+            'offertorium': 'offertorium',
+            'offertoire': 'offertorium',
+            'offertory': 'offertorium',
+            'responsorium': 'responsorium',
+            'responsum': 'responsorium',
+            'répons': 'responsorium',
+            'repons': 'responsorium',
+            'response': 'responsorium',
+            'sequentia': 'sequentia',
+            'sequence': 'sequentia',
+            'tractus': 'tractus',
+            'trait': 'tractus',
+            'tract': 'tractus',
+            'versus': 'versus',
+            'verset': 'versus',
+            'verse': 'versus',
+            }
         try:
             categorie = sansaccents(resultat['office-part'].lower())
             if categorie in categories.keys():
                 resultat['office-part'] = categorie
-            else: resultat['office-part'] = 'varia'
+            else:
+                resultat['office-part'] = 'varia'
         except KeyError:
             resultat['office-part'] = 'varia'
         return resultat
+
     @property
     def contenu(self):
         '''Partition gabc sans les en-têtes'''
@@ -319,6 +348,7 @@ class Gabc:
         resultat = re.sub('%.*\n', '', resultat)
         resultat = re.sub('\n', ' ', resultat)
         return resultat
+
     @property
     def partition(self):
         '''Liste de couples (clé, signe gabc)'''
@@ -335,15 +365,20 @@ class Gabc:
             try:
                 for j, n in enumerate(parties[i]):
                     # Élimination des "déchets" initiaux.
-                    if j < 2: pass
-                    elif j == 3 and n == ' ': pass
+                    if j < 2:
+                        pass
+                    elif j == 3 and n == ' ':
+                        pass
                     # Enregistrement des informations utiles.
-                    else: resultat.append((cle, n))
+                    else:
+                        resultat.append((cle, n))
             # Si, si, c'est arrivé…
             except IndexError:
-                sys.stderr.write("Il semble que vous ayez des "
+                sys.stderr.write(
+                    "Il semble que vous ayez des "
                     + "changements de clé sans notes subséquentes. "
-                    + "Le résultat n'est pas garanti.\n")
+                    + "Le résultat n'est pas garanti.\n"
+                    )
         return resultat
 
 
@@ -683,6 +718,7 @@ class Note:
             self.gabc = parametres['gabc']
             self.hauteur, self.duree = self.g2mid(parametres['gabc'])
         self.ly = self.g2ly()
+
     @property
     def nom(self):
         """Renvoi du nom "canonique" de la note."""
@@ -730,6 +766,7 @@ class Note:
         # par la suite.
         note += '8'
         return note
+
     def g2mid(self, gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
