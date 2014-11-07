@@ -8,8 +8,7 @@ TITRE = "Cantus"
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
-LILYPOND_ENTETE = (
-'''\\version "2.16"
+LILYPOND_ENTETE = '''\\version "2.16"
 
 \header {
   title = "%(titre)s"
@@ -47,17 +46,23 @@ Paroles = \\lyricmode {
   \layout{}
   \midi{}
 }'''
-)
+
 
 #### Librairies externes ###############################################
 
-import os,sys,getopt
+import os
+import sys
+import getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
+import unicodedata as ud
+import jrnl as l
+
 
 #### Méthodes globales #################################################
 
-def gabc2tk(commande,arguments):
+
+def gabc2tk(commande, arguments):
     """Fonction maîtresse"""
     # Initialisation des variables correspondant aux paramètres.
     debug = False
@@ -67,26 +72,26 @@ def gabc2tk(commande,arguments):
     # Analyse des arguments de la ligne de commande.
     try:
         opts, args = getopt.getopt(
-                                arguments,
-                                "hi:o:l:e:t:d:n:a:v",
-                                [
-                                    "help",                             # Aide
-                                    "entree=",                          # Fichier gabc
-                                    "midi=",                            # Fichier MIDI
-                                    "lily=",                            # Fichier ly
-                                    "export=",                          # Fichier texte
-                                    "tempo=",                           # Tempo de la musique
-                                    "transposition=",                   # Transposition
-                                    "titre=",                           # Titre de la pièce
-                                    "alerter=",                         # Caractères à signaler s'ils se trouvent dans le gabc
-                                    "verbose"                           # Verbosité de la sortie
-                                ]
-                            )
+            arguments,
+            "hi:o:l:e:t:d:n:a:v",
+            [
+                "help",             # Aide
+                "entree=",          # Fichier gabc
+                "midi=",            # Fichier MIDI
+                "lily=",            # Fichier ly
+                "export=",          # Fichier texte
+                "tempo=",           # Tempo de la musique
+                "transposition=",   # Transposition
+                "titre=",           # Titre de la pièce
+                "alerter=",         # Caractères à signaler
+                "verbose"           # Verbosité de la sortie
+            ]
+        )
     except getopt.GetoptError:
-        aide(commande,'Argument invalide',1)
+        aide(commande, 'Argument invalide', 1)
     for opt, arg in opts:
         if opt == '-h':
-            aide(commande,0)
+            aide(commande, 0)
         elif opt in ("-i", "--entree"):
             entree = FichierTexte(arg)
         elif opt in ("-o", "--midi"):
@@ -120,31 +125,34 @@ def gabc2tk(commande,arguments):
                 elif arguments[1][-3:] == '.ly':
                     sortieLily = FichierTexte(arguments[1])
             except IndexError:
-                sortieMidi = Fichier(re.sub('.gabc','.mid',arguments[0]))
-                sortieLily = FichierTexte(re.sub('.gabc','.ly',arguments[0]))
+                sortieMidi = Fichier(re.sub('.gabc', '.mid', arguments[0]))
+                sortieLily = FichierTexte(re.sub('.gabc', '.ly', arguments[0]))
     # S'il n'y a aucun argument, afficher l'aide.
-    except IndexError: aide(commande,'aucun argument',0)
+    except IndexError:
+        aide(commande, 'aucun argument', 0)
     # Extraire le contenu du gabc.
-    try: gabc = Gabc(entree.contenu)
+    try:
+        gabc = Gabc(entree.contenu)
     # Si le gabc n'existe pas, afficher l'aide.
     except FileNotFoundError:
-        aide(commande,'fichier inexistant',2)
+        aide(commande, 'fichier inexistant', 2)
     # Extraire la partition.
     partition = Partition(
-                        gabc = gabc.partition,
-                        transposition = transposition
-                        )
+        gabc=gabc.partition,
+        transposition=transposition
+        )
     # Afficher la tessiture obtenue après transposition.
-    print(Note(hauteur = partition.tessiture['minimum']).nom
+    print(
+        Note(hauteur=partition.tessiture['minimum']).nom
         + " - "
-        + Note(hauteur = partition.tessiture['maximum']).nom
+        + Note(hauteur=partition.tessiture['maximum']).nom
         + " ("
         + str(partition.transposition)
         + ')'
         )
     # Créer les objets midi et lilypond.
-    midi = Midi(partition,tempo)
-    lily = Lily(partition,tempo)
+    midi = Midi(partition, tempo)
+    lily = Lily(partition, tempo)
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
         ## les en-têtes gabc ;
@@ -170,25 +178,32 @@ def gabc2tk(commande,arguments):
     # Créer le fichier midi.
     try:
         midi.ecrire(sortieMidi.chemin)
-    except AttributeError: pass
+    except AttributeError:
+        pass
     try:
         lily.ecrire(sortieLily.chemin)
-    except AttributeError: pass
+    except AttributeError:
+        pass
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
-    try: partition.verifier(alertes)
-    except: pass
+    try:
+        partition.verifier(alertes)
+    except:
+        pass
     # Création d'une variable contenant les paroles.
     for mot in partition.texte:
             paroles += ''.join(syllabe for syllabe in mot) + ' '
     # S'assurer des alertes définies par l'utilisateur.
-    verifier(alertes,paroles)
+    verifier(alertes, paroles)
     # Si l'utilisateur l'a demandé,
     # écrire les paroles dans un fichier texte.
-    try: texte.ecrire(paroles + '\n')
-    except UnboundLocalError: pass
+    try:
+        texte.ecrire(paroles + '\n')
+    except UnboundLocalError:
+        pass
 
-def aide(commande,erreur,code):
+
+def aide(commande, erreur, code):
     """Affichage de l'aide"""
     # Tenir compte du message propre à chaque erreur, ainsi que du nom
     # sous lequel la commande a été appelée.
@@ -209,7 +224,8 @@ def aide(commande,erreur,code):
     # pour interagir avec d'autres programmes.
     sys.exit(code)
 
-def verifier(alertes,texte):
+
+def verifier(alertes, texte):
         """Contrôle de la présence de certains caractères
         (à la demande de l'utilisateur"""
         for alerte in alertes:
@@ -217,13 +233,19 @@ def verifier(alertes,texte):
                 print("!!! " + alerte + " !!!")
 
 
+def sansaccents(input_str):
+    nkfd_form = ud.normalize('NFKD', input_str)
+    return "".join([c for c in nkfd_form if not ud.combining(c)])
+
+
 #### Classes ###########################################################
 
 ##### Classes servant à l'analyse du gabc, de la mélodie et des paroles.
 
+
 class Gabc:
     """Description du fichier gabc"""
-    def __init__(self,code):
+    def __init__(self, code):
         self.code = code
     @property
     def parties(self):
@@ -237,18 +259,62 @@ class Gabc:
     def entetes(self):
         '''En-têtes du gabc, sous forme d'un dictionnaire.'''
         resultat = {
-            info[0]:info[1].replace(';','').replace('\r','')
+            info[0]:':'.join(info[1:]).replace(';', '').replace('\r', '')
             for info in [ligne.split(':')
                 for ligne in self.parties[0].split('\n')
                 if ':' in ligne]
             }
+        categories = {
+                'alleluia':'alleluia',
+                'antiphona':'antiphona',
+                'antienne':'antiphona',
+                'antiphon':'antiphona',
+                'communio':'communio',
+                'communion':'communio',
+                'graduale':'graduale',
+                'graduel':'graduale',
+                'gradual':'graduale',
+                'hymnus':'hymnus',
+                'hymne':'hymnus',
+                'hymn':'hymnus',
+                'introitus':'introitus',
+                'introit':'introitus',
+                'kyriale':'kyriale',
+                'lectio':'lectio',
+                'leçon':'lectio',
+                'lecon':'lectio',
+                'lesson':'lectio',
+                'offertorium':'offertorium',
+                'offertoire':'offertorium',
+                'offertory':'offertorium',
+                'responsorium':'responsorium',
+                'responsum':'responsorium',
+                'répons':'responsorium',
+                'repons':'responsorium',
+                'response':'responsorium',
+                'sequentia':'sequentia',
+                'sequence':'sequentia',
+                'tractus':'tractus',
+                'trait':'tractus',
+                'tract':'tractus',
+                'versus':'versus',
+                'verset':'versus',
+                'verse':'versus',
+                }
+        try:
+            categorie = sansaccents(resultat['office-part'].lower())
+            if categorie in categories.keys():
+                resultat['office-part'] = categorie
+            else: resultat['office-part'] = 'varia'
+        except KeyError:
+            resultat['office-part'] = 'varia'
         return resultat
     @property
     def contenu(self):
         '''Partition gabc sans les en-têtes'''
         resultat = self.parties[1]
-        resultat = re.sub('%.*\n','',resultat)
-        resultat = re.sub('\n',' ',resultat)
+        resultat = re.sub('%.*\n', '', resultat)
+        resultat = re.sub('\n', ' ', resultat)
         return resultat
     @property
     def partition(self):
@@ -262,14 +328,14 @@ class Gabc:
         partiestoutes = regex.split(contenu)
         parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
         # Définition des couples (clé, signe).
-        for i,cle in enumerate(cles):
+        for i, cle in enumerate(cles):
             try:
-                for j,n in enumerate(parties[i]):
+                for j, n in enumerate(parties[i]):
                     # Élimination des "déchets" initiaux.
                     if j < 2: pass
                     elif j == 3 and n == ' ': pass
                     # Enregistrement des informations utiles.
-                    else: resultat.append((cle,n))
+                    else: resultat.append((cle, n))
             # Si, si, c'est arrivé…
             except IndexError:
                 sys.stderr.write("Il semble que vous ayez des "
@@ -277,24 +343,25 @@ class Gabc:
                     + "Le résultat n'est pas garanti.\n")
         return resultat
 
+
 class Partition:
     """Partition de musique"""
-    def __init__(self,**parametres):
+    def __init__(self, **parametres):
         # A priori, pas de bémol à la clé.
         self.b = ''
         # S'il y a un bémol à la clé, en tenir compte.
         if 'bemol' in parametres:
             self.b = self.b + parametres['bemol']
-            parametres['tonalite'] = ['f','M']
+            parametres['tonalite'] = ['f', 'M']
         # Cas où l'instance de classe est initialisée avec le code gabc
         # (cas le plus courant).
         if 'gabc' in parametres:
-            self.musique,self.texte = self.g2p(parametres['gabc'])
+            self.musique, self.texte = self.g2p(parametres['gabc'])
             # Si bémol à la clé, adapter la tonalité (mais le bémol
             # ainsi détecté sera traité dans la méthode g2p de la classe
             # Note.
             if len(parametres['gabc'][0][0]) == 3:
-                parametres['tonalite'] = ['f','M']
+                parametres['tonalite'] = ['f', 'M']
         # Si l'instance de classe est initialisée avec l'ensemble des
         # notes (pour tessiture ou transposition).
         if 'partition' in parametres:
@@ -304,7 +371,7 @@ class Partition:
         # les choses.
         if 'tonalite' in parametres:
             self.tonalite = parametres['tonalite']
-        else: self.tonalite = ['c','M']
+        else: self.tonalite = ['c', 'M']
         # A priori, pas de transposition manuelle
         # (elle sera alors calculée automatiquement).
         self.transposition = None
@@ -317,7 +384,7 @@ class Partition:
             self.transposer()
 
 
-    def g2p(self,gabc):
+    def g2p(self, gabc):
         """Analyser le code gabc pour en sortir :
             − la mélodie (liste d'objets notes) ;
             − le texte (chaîne de caractères)."""
@@ -336,7 +403,7 @@ class Partition:
         quilisma = 'w'
         liquescence = '~'
         speciaux = 'osvOSV'
-        barres = '`,;:'
+        barres = '`, ;:'
         bemol = "x"
         becarre = "y"
         coupures = '/ '
@@ -363,7 +430,7 @@ class Partition:
         #   crochets. Attention : ces commandes sont purement et
         #   simplement ignorées.
         musique = 0
-        for i,signe in enumerate(gabc):
+        for i, signe in enumerate(gabc):
             # Traitement du texte.
             if musique == 0:
                 # Si une parenthèse s'ouvre, un neume commence.
@@ -381,9 +448,9 @@ class Partition:
                     # Les autres espaces appartiennent à la syllabe,
                     # mais on ignore les espaces répétitifs.
                     else:
-                        syllabe = (syllabe + ' ').replace('  ',' ')
+                        syllabe = (syllabe + ' ').replace('  ', ' ')
                 # Les accolades pour centrer les notes sont ignorées.
-                elif signe[1] in ['{','}']: pass
+                elif signe[1] in ['{', '}']: pass
                 # Ce qui n'est pas espace est considéré comme lettre.
                 else:
                     syllabe += signe[1]
@@ -462,7 +529,7 @@ class Partition:
                     notesretenues -= 1
                     neume[notesretenues].duree = DUREE_POINT
                     neume[notesretenues].ly = neume[notesretenues].ly\
-                                                    .replace('8','4')
+                                                    .replace('8', '4')
                 elif signe[1] == quilisma:
                     neume[-2].duree = DUREE_AVANT_QUILISMA
                     if '--' not in neume[-2].ly: neume[-2].ly += '--'
@@ -474,7 +541,7 @@ class Partition:
                     b = b + neume[-1].gabc[1]
                     neume = neume[:-1]
                 elif signe[1] == becarre:
-                    b = b.replace(neume[-1].gabc[1],'')
+                    b = b.replace(neume[-1].gabc[1], '')
                     neume = neume[:-1]
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
@@ -513,7 +580,7 @@ class Partition:
                     else:
                         neume.append(Coupure(gabc = signe))
                         if not cesure:
-                            neume.append(Barre(gabc = (signe[0],'')))
+                            neume.append(Barre(gabc = (signe[0], '')))
                         else: cesure = False
                 elif signe[1] in cesures:
                     cesure = True
@@ -532,7 +599,7 @@ class Partition:
                     # a affaire à une double barre.
                     except AttributeError:
                         neume = neume[:-1]
-                        signe = (signe[0],'::')
+                        signe = (signe[0], '::')
                     b = '' + self.b
                     neume.append(Barre(gabc = signe))
             # Traitement par le vide des commandes personnalisées.
@@ -568,8 +635,9 @@ class Partition:
             maximum += self.transposition
         return {'minimum': minimum, 'maximum': maximum}
 
+
 class Barre:
-    def __init__(self,**parametres):
+    def __init__(self, **parametres):
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
     @property
@@ -579,14 +647,15 @@ class Barre:
     @property
     def nom(self):
         return {'':"",
-                ',':"'",
+                ', ':"'",
                 ';':"'",
                 ':':"|",
                 '::':"||"
                 }[self.gabc[1]]
 
+
 class Coupure:
-    def __init__(self,**parametres):
+    def __init__(self, **parametres):
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
     @property
@@ -596,9 +665,10 @@ class Coupure:
     def nom(self):
         return self.gabc[1]
 
+
 class Note:
     """Note de musique"""
-    def __init__(self,**parametres):
+    def __init__(self, **parametres):
         self.b = ''
         if 'bemol' in parametres:
             self.b = parametres['bemol']
@@ -608,7 +678,7 @@ class Note:
             self.duree = parametres['duree']
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
-            self.hauteur,self.duree = self.g2mid(parametres['gabc'])
+            self.hauteur, self.duree = self.g2mid(parametres['gabc'])
         self.ly = self.g2ly()
     @property
     def nom(self):
@@ -646,8 +716,8 @@ class Note:
                 'b')[n]
         # Hauteur de la note :
         # on prévoit de la1 à sol7, ce qui est plutôt large !
-        note += (",,",
-                ",",
+        note += (", , ",
+                ", ",
                 "",
                 "'",
                 "''",
@@ -657,7 +727,7 @@ class Note:
         # par la suite.
         note += '8'
         return note
-    def g2mid(self,gabc):
+    def g2mid(self, gabc):
         """Renvoi de la note correspondant à une lettre gabc"""
         # Définition de la gamme.
         la = 57                 # Le nombre correspond au "pitch" MIDI.
@@ -668,7 +738,7 @@ class Note:
         fa = mi + 1
         sol = fa + 2
         gammehauteurs = (la, si, do, re, mi, fa, sol)
-        gammenotes = ('la','si','do','re','mi','fa','sol')
+        gammenotes = ('la', 'si', 'do', 're', 'mi', 'fa', 'sol')
         gabcnotes = "abcdefghijklm"
         # Analyse de la clé : les lettres du gabc définissant une
         # position sur la portée et non une hauteur de note, la note
@@ -730,23 +800,24 @@ class Note:
             if notes[lettre] != 'si' :
                 print(notes[lettre] + ' bémol rencontré')
             hauteur -= 1
-        return hauteur,duree
+        return hauteur, duree
 
 
 ##### Classes servant à l'export en différents formats.
 
+
 class Lily:
-    def __init__(self,partition,tempo):
+    def __init__(self, partition, tempo):
         self.transposition = (
-            "c,","des,","d,","ees,","e,","f,",
-            "fis,","g,","aes,","a,","bes,","b,",
-            "c","des","d","ees","e","f",
-            "fis","g","aes","a","bes","b","c"
+            "c, ", "des, ", "d, ", "ees, ", "e, ", "f, ",
+            "fis, ", "g, ", "aes, ", "a, ", "bes, ", "b, ",
+            "c", "des", "d", "ees", "e", "f",
+            "fis", "g", "aes", "a", "bes", "b", "c"
             )[(partition.transposition + 12)%24]
         self.musique = self.notes(partition.musique)
         self.tonalite = partition.tonalite[0]
-        self.texte = self.paroles(partition.texte,partition.musique)
-    def notes(self,musique):
+        self.texte = self.paroles(partition.texte, partition.musique)
+    def notes(self, musique):
         # Initialisation des variables.
         notes = ''
         prochainenote = ''
@@ -764,7 +835,7 @@ class Lily:
         neumeouvert = False
         noire = False
         for neume in musique:
-            for i,note in enumerate(neume):
+            for i, note in enumerate(neume):
                 # Traitement des notes.
                 if type(note) == Note:
                     # La noire va un peu nous compliquer la vie.
@@ -825,10 +896,10 @@ class Lily:
         # On renvoie la partition ainsi obtenue, en mettant le cas
         # échéant les épisèmes horizontaux avant les verticaux.
         return notes\
-                    .replace('-|--','---|')\
-                    .replace(' \\normalsize)',') \\normalsize')\
-                    .replace(' \\normalsize]','] \\normalsize')
-    def paroles(self,texte,musique):
+                    .replace('-|--', '---|')\
+                    .replace(' \\normalsize)', ') \\normalsize')\
+                    .replace(' \\normalsize]', '] \\normalsize')
+    def paroles(self, texte, musique):
         # Initialisation des variables.
         paroles = ''
         paroleprecedente = ''
@@ -837,7 +908,7 @@ class Lily:
         i = 0
         for mot in texte:
             # Former le mot lilypond à partir des syllabes.
-            parole = ' -- '.join([syllabes.replace(' ','_')
+            parole = ' -- '.join([syllabes.replace(' ', '_')
                                 for syllabes in mot])
             # S'il y a un mot précédent à traiter, c'est qu'il n'était
             # associé qu'à une barre (ou à un neume vide, ce qui ne
@@ -868,31 +939,31 @@ class Lily:
             else: paroleprecedente = parole
         # Les balises <v></v> peuvent contenir tout… et n'importe quoi !
         # Cela ne plaît généralement pas à lilypond, donc on les ignore.
-        paroles = re.sub('<v>.*?</v>','',paroles)
+        paroles = re.sub('<v>.*?</v>', '', paroles)
         # On renvoie ici le résultat du traitement.
         # Lilypond n'aime pas les étoiles : on doit donc appliquer un
         # filtre.
         # TODO: voir comment traiter les gras et italiques en lilypond
         # au sein d'une syllabe.
         return paroles\
-            .replace('*','&zwj;*')\
-            .replace('<i>','').replace('</i>','')\
-            .replace('<b>','').replace('</b>','')\
-            .replace('<sp>R/</sp>','℟')\
-            .replace('<sp>V/</sp>','℣')\
-            .replace('<sp>ae</sp>','æ')\
-            .replace("<sp>'ae</sp>",'ǽ')\
-            .replace("<sp>'æ</sp>",'ǽ')\
-            .replace('<sp>AE</sp>','Æ')\
-            .replace("<sp>'AE</sp>",'Ǽ')\
-            .replace("<sp>'Æ</sp>",'Ǽ')\
-            .replace('<sp>oe</sp>','œ')\
-            .replace("<sp>'oe</sp>",'œ́')\
-            .replace("<sp>'œ</sp>",'œ́')\
-            .replace('<sp>OE</sp>','Œ')\
-            .replace("<sp>'OE</sp>",'Œ́')\
-            .replace("<sp>'Œ</sp>",'Œ́')
-    def ecrire(self,chemin):
+            .replace('*', '&zwj;*')\
+            .replace('<i>', '').replace('</i>', '')\
+            .replace('<b>', '').replace('</b>', '')\
+            .replace('<sp>R/</sp>', '℟')\
+            .replace('<sp>V/</sp>', '℣')\
+            .replace('<sp>ae</sp>', 'æ')\
+            .replace("<sp>'ae</sp>", 'ǽ')\
+            .replace("<sp>'æ</sp>", 'ǽ')\
+            .replace('<sp>AE</sp>', 'Æ')\
+            .replace("<sp>'AE</sp>", 'Ǽ')\
+            .replace("<sp>'Æ</sp>", 'Ǽ')\
+            .replace('<sp>oe</sp>', 'œ')\
+            .replace("<sp>'oe</sp>", 'œ́')\
+            .replace("<sp>'œ</sp>", 'œ́')\
+            .replace('<sp>OE</sp>', 'Œ')\
+            .replace("<sp>'OE</sp>", 'Œ́')\
+            .replace("<sp>'Œ</sp>", 'Œ́')
+    def ecrire(self, chemin):
         sortie = FichierTexte(chemin)
         sortie.ecrire(LILYPOND_ENTETE % {
                         'titre': TITRE,
@@ -903,19 +974,20 @@ class Lily:
                         }
                     )
 
+
 class Midi:
     """Musique midi"""
-    def __init__(self,partition,tempo):
+    def __init__(self, partition, tempo):
         # Définition des paramètres MIDI.
         piste = 0
         temps = 0
         self.sortieMidi = MIDIFile(1)
         # Nom de la piste.
-        self.sortieMidi.addTrackName(piste,temps,TITRE)
+        self.sortieMidi.addTrackName(piste, temps, TITRE)
         # Tempo.
-        self.sortieMidi.addTempo(piste,temps, tempo)
+        self.sortieMidi.addTempo(piste, temps, tempo)
         # Instrument (74 : flûte).
-        self.sortieMidi.addProgramChange(piste,0,temps,74)
+        self.sortieMidi.addProgramChange(piste, 0, temps, 74)
         # À partir des propriétés de la note, création des évènements
         # MIDI.
         for neume in partition.musique:
@@ -933,7 +1005,7 @@ class Midi:
                                         duree,
                                         volume)
                 temps += duree
-    def ecrire(self,chemin):
+    def ecrire(self, chemin):
         """Écriture effective du fichier MIDI"""
         binfile = open(chemin, 'wb')
         self.sortieMidi.writeFile(binfile)
@@ -942,32 +1014,34 @@ class Midi:
 
 ##### Classes génériques pour faciliter l'écriture de fichiers.
 
+
 class Fichier:
     """Gestion des entrées/sorties fichier"""
-    def __init__(self,chemin):
+    def __init__(self, chemin):
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
         self.chemin = chemin
 
+
 class FichierTexte:
     """Gestion des fichiers texte"""
-    def __init__(self,chemin):
+    def __init__(self, chemin):
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
         self.chemin = chemin
     @property
     def contenu(self):
         """Lecture du contenu"""
-        fichier = open(self.chemin,'r')
+        fichier = open(self.chemin, 'r')
         texte = fichier.read(-1)
         fichier.close()
         return texte
-    def ecrire(self,contenu):
+    def ecrire(self, contenu):
         """Écriture dans le fichier"""
-        fichier = open(self.chemin,'w')
+        fichier = open(self.chemin, 'w')
         fichier.write(contenu)
         fichier.close()
 
 
 if __name__ == '__main__':
-    gabc2tk(sys.argv[0],sys.argv[1:])
+    gabc2tk(sys.argv[0], sys.argv[1:])
