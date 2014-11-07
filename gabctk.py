@@ -56,7 +56,10 @@ import getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
 import unicodedata as ud
-import jrnl as l
+try:
+    import jrnl as l
+except ImportError:
+    pass
 
 
 #### Méthodes globales #################################################
@@ -647,7 +650,7 @@ class Barre:
     @property
     def nom(self):
         return {'':"",
-                ', ':"'",
+                ',':"'",
                 ';':"'",
                 ':':"|",
                 '::':"||"
