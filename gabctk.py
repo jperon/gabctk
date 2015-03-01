@@ -558,13 +558,15 @@ class Partition:
                             )
                 # Durées et épisèmes.
                 elif signe[1] == ictus:
-                    neume[-1].ly += '-|'
+                    neume[-1].ly += '-!'
                 elif signe[1] == episeme:
-                    notesretenues -= 1
+                    if neume[notesretenues].duree != DUREE_POINT:
+                        notesretenues -= 1
                     neume[notesretenues].duree = DUREE_EPISEME
                     neume[notesretenues].ly += '--'
                 elif signe[1] == point:
-                    notesretenues -= 1
+                    if neume[notesretenues].duree != DUREE_EPISEME:
+                        notesretenues -= 1
                     neume[notesretenues].duree = DUREE_POINT
                     neume[notesretenues].ly = neume[notesretenues].ly\
                                                     .replace('8', '4')
@@ -605,21 +607,30 @@ class Partition:
                                     neume[-4].duree = neume[-5].duree
                     # Traitement des coupures doubles (ou plus, mais
                     # cela ne devrait pas arriver).
-                    if neume[-1].gabc[1] == ''\
-                    and type(neume[-2]) == Coupure:
-                            neume = neume[:-1]
-                            cesure = True
-                    if type(neume[-1]) == Coupure:
-                        neume[-1] = Coupure(
-                                    gabc = (signe[0],
-                                        neume[-1].gabc[1] + signe[1]
+                    try:
+                        if neume[-1].gabc[1] == ''\
+                        and type(neume[-2]) == Coupure:
+                                neume = neume[:-1]
+                                cesure = True
+                        if type(neume[-1]) == Coupure:
+                            neume[-1] = Coupure(
+                                        gabc = (signe[0],
+                                            neume[-1].gabc[1] + signe[1]
+                                            )
                                         )
-                                    )
-                    else:
-                        neume.append(Coupure(gabc = signe))
-                        if not cesure:
-                            neume.append(Barre(gabc = (signe[0], '')))
-                        else: cesure = False
+                        else:
+                            neume.append(Coupure(gabc = signe))
+                            if not cesure:
+                                neume.append(Barre(gabc = (signe[0], '')))
+                            else: cesure = False
+                    # Dans le cas exceptionnel où l'on a une parenthèse
+                    # dans le texte, une exception est levée, que l'on
+                    # ignore.
+                    # TODO: Cela entraîne des aberrations dans la
+                    # mélodie, non traitées pour l'instant vue la rareté
+                    # du cas.
+                    except IndexError:
+                        pass
                 elif signe[1] in cesures:
                     cesure = True
                 # Une barre annule les altérations accidentelles,
@@ -936,7 +947,7 @@ class Lily:
         # On renvoie la partition ainsi obtenue, en mettant le cas
         # échéant les épisèmes horizontaux avant les verticaux.
         return notes\
-                    .replace('-|--', '---|')\
+                    .replace('-!--', '---!')\
                     .replace(' \\normalsize)', ') \\normalsize')\
                     .replace(' \\normalsize]', '] \\normalsize')
     def paroles(self, texte, musique):
