@@ -8,7 +8,7 @@ TITRE = "Cantus"
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
-LILYPOND_ENTETE = '''\\version "2.16"
+LILYPOND_ENTETE = '''\\version "2.18"
 
 \header {
   title = "%(titre)s"
@@ -63,6 +63,30 @@ except ImportError:
 
 
 # Méthodes globales ####################################################
+
+
+def aide(commande, erreur, code):
+    """Affichage de l'aide"""
+    # Tenir compte du message propre à chaque erreur, ainsi que du nom
+    # sous lequel la commande a été appelée.
+    print(
+        'Erreur : '
+        + erreur + '\n'
+        + 'Usage : \n    '
+        + commande + ' '
+        + '-i <input.gabc> '
+        + '[-o <output.mid>] '
+        + '[-l <output.ly>] '
+        + '[-e <texte.txt>] '
+        + '[-t <tempo>] '
+        + '[-d <transposition>] '
+        + '[-n <titre>]'
+        + '[-a <alertes>] '
+        + '[-v]'''
+        )
+    # Renvoyer le code correspondant à l'erreur,
+    # pour interagir avec d'autres programmes.
+    sys.exit(code)
 
 
 def gabctk(commande, arguments):
@@ -227,28 +251,10 @@ def gabctk(commande, arguments):
         pass
 
 
-def aide(commande, erreur, code):
-    """Affichage de l'aide"""
-    # Tenir compte du message propre à chaque erreur, ainsi que du nom
-    # sous lequel la commande a été appelée.
-    print(
-        'Erreur : '
-        + erreur + '\n'
-        + 'Usage : \n    '
-        + commande + ' '
-        + '-i <input.gabc> '
-        + '[-o <output.mid>] '
-        + '[-l <output.ly>] '
-        + '[-e <texte.txt>] '
-        + '[-t <tempo>] '
-        + '[-d <transposition>] '
-        + '[-n <titre>]'
-        + '[-a <alertes>] '
-        + '[-v]'''
-        )
-    # Renvoyer le code correspondant à l'erreur,
-    # pour interagir avec d'autres programmes.
-    sys.exit(code)
+def sansaccents(input_str):
+    """Renvoie la chaîne d'entrée sans accents"""
+    nkfd_form = ud.normalize('NFKD', input_str)
+    return "".join([c for c in nkfd_form if not ud.combining(c)])
 
 
 def verifier(alertes, texte):
@@ -258,12 +264,6 @@ def verifier(alertes, texte):
     for alerte in alertes:
         if alerte in texte:
             print("!!! " + alerte + " !!!")
-
-
-def sansaccents(input_str):
-    """Renvoie la chaîne d'entrée sans accents"""
-    nkfd_form = ud.normalize('NFKD', input_str)
-    return "".join([c for c in nkfd_form if not ud.combining(c)])
 
 
 # Classes ##############################################################
