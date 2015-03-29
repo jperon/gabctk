@@ -65,7 +65,7 @@ except ImportError:
 # Méthodes globales ####################################################
 
 
-def gabc2tk(commande, arguments):
+def gabctk(commande, arguments):
     """Fonction maîtresse"""
     # Initialisation des variables correspondant aux paramètres.
     debug = False
@@ -165,15 +165,15 @@ def gabc2tk(commande, arguments):
         # − les paroles seules ;
         print(partition.texte)
         print()
-        # −_les notes seules.
+        # −_les notes seules ;
         for neume in partition.musique:
             print([note.nom for note in neume])
             print()
         print(lily.musique)
-        # les paroles en format lilypond
+        # − les paroles en format lilypond ;
         print(lily.texte)
         print()
-        # la tessiture obtenue après transposition.
+        # − la tessiture obtenue après transposition.
         print(
             Note(hauteur=partition.tessiture['minimum']).nom
             + " - "
@@ -252,14 +252,16 @@ def aide(commande, erreur, code):
 
 
 def verifier(alertes, texte):
-        """Contrôle de la présence de certains caractères
-        (à la demande de l'utilisateur"""
-        for alerte in alertes:
-            if alerte in texte:
-                print("!!! " + alerte + " !!!")
+    """Contrôle de la présence de certains caractères
+
+    (à la demande de l'utilisateur)"""
+    for alerte in alertes:
+        if alerte in texte:
+            print("!!! " + alerte + " !!!")
 
 
 def sansaccents(input_str):
+    """Renvoie la chaîne d'entrée sans accents"""
     nkfd_form = ud.normalize('NFKD', input_str)
     return "".join([c for c in nkfd_form if not ud.combining(c)])
 
@@ -276,8 +278,8 @@ class Gabc:
 
     @property
     def parties(self):
-        '''Tuple contenant d'une part les en-têtes,
-        d'autre part le corps du gabc.'''
+        """Tuple contenant d'une part les en-têtes,
+        d'autre part le corps du gabc"""
         resultat = self.code
         regex = re.compile('%%\n')
         resultat = regex.split(resultat)
@@ -285,7 +287,7 @@ class Gabc:
 
     @property
     def entetes(self):
-        '''En-têtes du gabc, sous forme d'un dictionnaire.'''
+        """En-têtes du gabc, sous forme d'un dictionnaire"""
         resultat = {
             info[0]: ':'.join(info[1:]).replace(';', '').replace('\r', '')
             for info in [
@@ -343,7 +345,7 @@ class Gabc:
 
     @property
     def contenu(self):
-        '''Partition gabc sans les en-têtes'''
+        """Partition gabc sans les en-têtes"""
         resultat = self.parties[1]
         resultat = re.sub('%.*\n', '', resultat)
         resultat = re.sub('\n', ' ', resultat)
@@ -351,7 +353,7 @@ class Gabc:
 
     @property
     def partition(self):
-        '''Liste de couples (clé, signe gabc)'''
+        """Liste de couples (clé, signe gabc)"""
         resultat = []
         contenu = self.contenu
         # Recherche des clés.
@@ -383,7 +385,11 @@ class Gabc:
 
 
 class Partition:
-    """Partition de musique"""
+    """Partition de musique.
+
+    Cette classe a deux propriétés fondamentales, qui sont des listes :
+    − musique, qui contient les notes ;
+    − texte, qui contient les paroles."""
     def __init__(self, **parametres):
         # A priori, pas de bémol à la clé.
         self.b = ''
@@ -425,7 +431,9 @@ class Partition:
             self.transposer()
 
     def g2p(self, gabc):
-        """Analyser le code gabc pour en sortir :
+        """Analyse du code gabc
+
+        pour en sortir :
             − la mélodie (liste d'objets notes) ;
             − le texte (chaîne de caractères)."""
         # # Remarque : la traduction en musique a nécessité certains
@@ -671,8 +679,9 @@ class Partition:
         return melodie, texte
 
     def transposer(self):
-        """Transposition de la partition automatiquement
-        sur une tessiture moyenne."""
+        """Transposition automatique de la partition.
+
+        On transpose automatiquement sur une tessiture moyenne."""
         # Calcul de la hauteur idéale.
         self.transposition = 66 - int(sum(self.tessiture.values())/2)
 
@@ -700,17 +709,20 @@ class Partition:
 
 
 class Barre:
+    """Barres délimitant les incises"""
     def __init__(self, **parametres):
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
 
     @property
     def ly(self):
+        """Expression en lilypond"""
         # TODO: trouver une meilleure expression pour la demi-barre.
         return '''\\bar "%s"''' % self.nom
 
     @property
     def nom(self):
+        """Correspondance entre les barres gabc et les barres lilypond"""
         return {
             '': "",
             ',': "'",
@@ -721,16 +733,19 @@ class Barre:
 
 
 class Coupure:
+    """Coupures neumatiques"""
     def __init__(self, **parametres):
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
 
     @property
     def ly(self):
+        """Traitement (par le vide) des coupures en lilypond"""
         return ''
 
     @property
     def nom(self):
+        """Nom de la coupure"""
         return self.gabc[1]
 
 
@@ -751,7 +766,7 @@ class Note:
 
     @property
     def nom(self):
-        """Renvoi du nom "canonique" de la note."""
+        """Renvoi du nom "canonique" de la note"""
         o = int(self.hauteur / 12) - 2
         n = int(self.hauteur % 12)
         return ('Do',
@@ -768,7 +783,7 @@ class Note:
                 'Si')[n] + str(o)
 
     def g2ly(self):
-        """Renvoi du code lilypond correspondant à la note."""
+        """Renvoi du code lilypond correspondant à la note"""
         o = int(self.hauteur / 12) - 1
         n = int(self.hauteur % 12)
         # Nom de la note
@@ -879,6 +894,7 @@ class Note:
 
 
 class Lily:
+    """Partition lilypond"""
     def __init__(self, partition, tempo):
         self.transposition = (
             "c, ", "des, ", "d, ", "ees, ", "e, ", "f, ",
@@ -891,6 +907,7 @@ class Lily:
         self.texte = self.paroles(partition.texte, partition.musique)
 
     def notes(self, musique):
+        """Renvoi de la mélodie lilypond à partir des notes de la partition"""
         # Initialisation des variables.
         notes = ''
         prochainenote = ''
@@ -975,6 +992,7 @@ class Lily:
             .replace(' \\normalsize]', '] \\normalsize')
 
     def paroles(self, texte, musique):
+        """Renvoi des paroles lilypond à partir du texte de la partition"""
         # Initialisation des variables.
         paroles = ''
         paroleprecedente = ''
@@ -1049,6 +1067,7 @@ class Lily:
             .replace("<sp>'Œ</sp>", 'Œ́')
 
     def ecrire(self, chemin):
+        """Enregistrement du code lilypond dans un fichier"""
         sortie = FichierTexte(chemin)
         sortie.ecrire(LILYPOND_ENTETE % {
             'titre': TITRE,
@@ -1132,4 +1151,4 @@ class FichierTexte:
 
 
 if __name__ == '__main__':
-    gabc2tk(sys.argv[0], sys.argv[1:])
+    gabctk(sys.argv[0], sys.argv[1:])
