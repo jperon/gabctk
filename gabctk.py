@@ -222,10 +222,7 @@ def gabctk(commande, arguments):
     except:
         pass
     # Création d'une variable contenant les paroles.
-    for mot in partition.texte:
-        print(mot)
-        if mot != ['']:
-            paroles += ''.join(syllabe for syllabe in mot) + ' '
+    paroles = partition.paroles
     # S'assurer des alertes définies par l'utilisateur.
     verifier(alertes, paroles)
     # Si l'utilisateur l'a demandé,
@@ -686,6 +683,17 @@ class Partition:
         On transpose automatiquement sur une tessiture moyenne."""
         # Calcul de la hauteur idéale.
         self.transposition = 66 - int(sum(self.tessiture.values())/2)
+
+    @property
+    def paroles(self):
+        """Paroles de la partition.
+
+        Retour d'une chaîne de caractères contenant les paroles.
+        """
+        return ' '.join(
+            ''.join(syllabe for syllabe in mot)
+            for mot in self.texte if mot != ['']
+        )
 
     @property
     def tessiture(self):
