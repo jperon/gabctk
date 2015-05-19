@@ -1131,6 +1131,8 @@ class Fichier:
 class FichierTexte:
     """Gestion des fichiers texte"""
     def __init__(self, chemin):
+        if chemin == '-':
+            self.chemin = '-'
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
         self.chemin = chemin
@@ -1138,16 +1140,20 @@ class FichierTexte:
     @property
     def contenu(self):
         """Lecture du contenu"""
-        fichier = open(self.chemin, 'r')
-        texte = fichier.read(-1)
-        fichier.close()
+        if self.chemin == '-':
+            texte = sys.stdin.read(-1)
+        else:
+            with open(self.chemin, 'r') as fichier:
+                texte = fichier.read(-1)
         return texte
 
     def ecrire(self, contenu):
         """Écriture dans le fichier"""
-        fichier = open(self.chemin, 'w')
-        fichier.write(contenu)
-        fichier.close()
+        if self.chemin == '-':
+            texte = sys.stdout.write(contenu)
+        else:
+            with open(self.chemin, 'w') as fichier:
+                fichier.write(contenu)
 
 
 if __name__ == '__main__':
