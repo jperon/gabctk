@@ -223,6 +223,8 @@ def gabctk(commande, arguments):
         pass
     # Création d'une variable contenant les paroles.
     for mot in partition.texte:
+        print(mot)
+        if mot != ['']:
             paroles += ''.join(syllabe for syllabe in mot) + ' '
     # S'assurer des alertes définies par l'utilisateur.
     verifier(alertes, paroles)
