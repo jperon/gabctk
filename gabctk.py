@@ -178,33 +178,28 @@ def gabctk(commande, arguments):
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if debug:
         # − les en-têtes gabc ;
-        print(gabc.entetes)
-        print()
+        print(gabc.entetes, '\n')
         # − la partition gabc (sans les en-têtes) ;
-        print(gabc.contenu)
-        print()
+        print(gabc.contenu, '\n')
         # − la liste des couples (clé, signe gabc) ;
-        print(gabc.partition)
-        print()
+        print(gabc.partition, '\n')
         # − les paroles seules ;
-        print(partition.texte)
-        print()
+        print(partition.texte, '\n')
         # −_les notes seules ;
         for neume in partition.musique:
-            print([note.nom for note in neume])
-            print()
+            print(neume, '\n')
         print(lily.musique)
         # − les paroles en format lilypond ;
-        print(lily.texte)
-        print()
+        print(lily.texte, '\n')
         # − la tessiture obtenue après transposition.
         print(
-            Note(hauteur=partition.tessiture['minimum']).nom
-            + " - "
-            + Note(hauteur=partition.tessiture['maximum']).nom
-            + " ("
-            + str(partition.transposition)
-            + ')'
+            Note(hauteur=partition.tessiture['minimum']).nom,
+            " - ",
+            Note(hauteur=partition.tessiture['maximum']).nom,
+            " (",
+            str(partition.transposition),
+            ')',
+            '\n'
             )
     # Créer le fichier midi.
     try:
@@ -521,17 +516,18 @@ class Partition:
                     # précédent.
                     except AttributeError:
                         try:
-                            if neume[-2].duree < neume[-3].duree:
-                                neume[-2].duree = neume[-3].duree
+                            i = -2
+                            while not isinstance(neume[i], Note):
+                                i -= 1
+                            derniere = neume[i]
+                            i -= 1
+                            while not isinstance(neume[i], Note):
+                                i -= 1
+                            avantderniere = neume[i]
+                            if derniere.duree < avantderniere.duree:
+                                derniere.duree = avantderniere.duree
                         except IndexError:
                             pass
-                        except AttributeError:
-                            try:
-                                if neume[-3].duree < neume[-4].duree:
-                                    neume[-3].duree = neume[-4].duree
-                            except AttributeError:
-                                if neume[-4].duree < neume[-5].duree:
-                                    neume[-4].duree = neume[-5].duree
                     # Ajout du neume à la mélodie, de la syllabe au mot,
                     # réinitialisation de la syllabe et du neume.
                     mot.append(syllabe)
@@ -543,16 +539,17 @@ class Partition:
                 # l'auteur du gabc a de "mauvaises pratiques" et abuse de
                 # telles commandes, cela peut amener des incohérences.
                 # Pour cette raison, on renvoie un avertissement.
-                if signe[1] == '[':
+                elif signe[1] == '[':
                     musique = 2
                     print("Commande personnalisée ignorée")
                 # A priori, on s'attend à rencontrer une note.
-                if signe[1].lower() in gabcnotes:
+                elif signe[1].lower() in gabcnotes:
                     signesspeciaux = 0
                     notesretenues = 0
                     neume.append(
                         Note(
                             gabc=signe,
+                            gabchauteur=signe,
                             bemol=b
                             )
                         )
@@ -565,38 +562,53 @@ class Partition:
                     if signesspeciaux > 1:
                         neume.append(
                             Note(
-                                gabc=neume[-1].gabc,
+                                gabc=signe,
+                                hauteur=neume[-1].gabc,
                                 bemol=b
                                 )
                             )
                 # Durées et épisèmes.
-                elif signe[1] == ictus:
-                    neume[-1].ly += '-!'
-                elif signe[1] == episeme:
-                    if neume[notesretenues].duree != DUREE_POINT:
-                        notesretenues -= 1
-                    neume[notesretenues].duree = DUREE_EPISEME
-                    neume[notesretenues].ly += '--'
-                elif signe[1] == point:
-                    if neume[notesretenues].duree != DUREE_EPISEME:
-                        notesretenues -= 1
-                    neume[notesretenues].duree = DUREE_POINT
-                    neume[notesretenues].ly = neume[notesretenues].ly\
-                        .replace('8', '4')
-                elif signe[1] == quilisma:
-                    neume[-2].duree = DUREE_AVANT_QUILISMA
-                    if '--' not in neume[-2].ly:
-                        neume[-2].ly += '--'
-                    neume[-1].ly += '\prall'
-                elif signe[1] == liquescence:
-                    neume[-1].ly = '\\tiny %s \\normalsize' % neume[-1].ly
+                elif signe[1] in (
+                        ictus, episeme, point, quilisma, liquescence
+                ):
+                    if signe[1] == ictus:
+                        neume[-1].ly += '-!'
+                    elif signe[1] == episeme:
+                        while not isinstance(neume[notesretenues], Note):
+                            notesretenues -= 1
+                        if neume[notesretenues].duree == DUREE_EPISEME:
+                            notesretenues -= 1
+                        while not isinstance(neume[notesretenues], Note):
+                            notesretenues -= 1
+                        neume[notesretenues].duree = DUREE_EPISEME
+                        neume[notesretenues].ly += '--'
+                    elif signe[1] == point:
+                        while not isinstance(neume[notesretenues], Note):
+                            notesretenues -= 1
+                        if neume[notesretenues].duree == DUREE_POINT:
+                            notesretenues -= 1
+                        while not isinstance(neume[notesretenues], Note):
+                            notesretenues -= 1
+                        neume[notesretenues].duree = DUREE_POINT
+                        neume[notesretenues].ly = neume[notesretenues].ly\
+                            .replace('8', '4')
+                    elif signe[1] == quilisma:
+                        neume[-2].duree = DUREE_AVANT_QUILISMA
+                        if '--' not in neume[-2].ly:
+                            neume[-2].ly += '--'
+                        neume[-1].ly += '\prall'
+                    elif signe[1] == liquescence:
+                        neume[-1].ly = '\\tiny %s \\normalsize' % neume[-1].ly
+                    neume.append(SigneRythmique(gabc=signe))
                 # Altérations.
-                elif signe[1] == bemol:
-                    b = b + neume[-1].gabc[1]
-                    neume = neume[:-1]
-                elif signe[1] == becarre:
-                    b = b.replace(neume[-1].gabc[1], '')
-                    neume = neume[:-1]
+                elif signe[1] in (bemol, becarre):
+                    if signe[1] == bemol:
+                        b = b + neume[-1].gabc[1]
+                        neume = neume[:-1]
+                    elif signe[1] == becarre:
+                        b = b.replace(neume[-1].gabc[1], '')
+                        neume = neume[:-1]
+                    neume.append(Alteration(gabc=signe))
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
                 # des coupures, s'assurer pour le moins que la dernière
@@ -663,7 +675,10 @@ class Partition:
                     try:
                         neume[-1].duree += pose
                     except IndexError:
-                        melodie[-1][-1].duree += pose
+                        i = -1
+                        while not isinstance(melodie[-1][i], Note):
+                            i -= 1
+                        melodie[-1][i].duree += pose
                     # Si l'exception suivante est levée, c'est que l'on
                     # a affaire à une double barre.
                     except AttributeError:
@@ -718,11 +733,40 @@ class Partition:
         return {'minimum': minimum, 'maximum': maximum}
 
 
-class Barre:
-    """Barres délimitant les incises"""
+class Element:
+    """Élément d'une partition
+
+    Il peut s'agir d'une note, d'un épisème, d'une barre…
+
+    """
     def __init__(self, **parametres):
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
+
+    def __repr__(self):
+        return self.gabc[1]
+
+
+class Alteration(Element):
+    """Bémols et bécarres"""
+    def __init__(self, **parametres):
+        Element.__init__(self, **parametres)
+
+    @property
+    def ly(self):
+        """Les altérations influent sur les notes suivantes"""
+        return ''
+
+    @property
+    def nom(self):
+        """Nom de l'altération"""
+        return self.gabc[1]
+
+
+class Barre(Element):
+    """Barres délimitant les incises"""
+    def __init__(self, **parametres):
+        Element.__init__(self, **parametres)
 
     @property
     def ly(self):
@@ -742,11 +786,10 @@ class Barre:
             }[self.gabc[1]]
 
 
-class Coupure:
+class Coupure(Element):
     """Coupures neumatiques"""
     def __init__(self, **parametres):
-        if 'gabc' in parametres:
-            self.gabc = parametres['gabc']
+        Element.__init__(self, **parametres)
 
     @property
     def ly(self):
@@ -759,9 +802,26 @@ class Coupure:
         return self.gabc[1]
 
 
-class Note:
+class SigneRythmique(Element):
+    """Épisèmes, points"""
+    def __init__(self, **parametres):
+        Element.__init__(self, **parametres)
+
+    @property
+    def ly(self):
+        """L'épisème ou le point influent déjà sur la note précédente"""
+        return ''
+
+    @property
+    def nom(self):
+        """Nom du signe"""
+        return self.gabc[1]
+
+
+class Note(Element):
     """Note de musique"""
     def __init__(self, **parametres):
+        Element.__init__(self, **parametres)
         self.b = ''
         if 'bemol' in parametres:
             self.b = parametres['bemol']
@@ -769,9 +829,8 @@ class Note:
             self.hauteur = parametres['hauteur']
         if 'duree' in parametres:
             self.duree = parametres['duree']
-        if 'gabc' in parametres:
-            self.gabc = parametres['gabc']
-            self.hauteur, self.duree = self.g2mid(parametres['gabc'])
+        if 'gabchauteur' in parametres:
+            self.hauteur, self.duree = self.g2mid(parametres['gabchauteur'])
         self.ly = self.g2ly()
 
     @property
