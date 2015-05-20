@@ -69,7 +69,7 @@ def aide(commande, erreur, code):
     """Affichage de l'aide"""
     # Tenir compte du message propre à chaque erreur, ainsi que du nom
     # sous lequel la commande a été appelée.
-    print(
+    sys.stderr.write(
         'Erreur : '
         + erreur + '\n'
         + 'Usage : \n    '
@@ -186,8 +186,6 @@ def gabctk(commande, arguments):
         # − les paroles seules ;
         print(partition.texte, '\n')
         # −_les notes seules ;
-        for neume in partition.musique:
-            print(neume, '\n')
         print(lily.musique)
         # − les paroles en format lilypond ;
         print(lily.texte, '\n')
@@ -224,6 +222,7 @@ def gabctk(commande, arguments):
     # écrire les paroles dans un fichier texte.
     try:
         texte.ecrire(paroles + '\n')
+        print('\n', partition.melodie)
     except UnboundLocalError:
         pass
     # Si l'utilisateur l'a demandé,
@@ -257,7 +256,17 @@ def verifier(alertes, texte):
     (à la demande de l'utilisateur)"""
     for alerte in alertes:
         if alerte in texte:
-            print("!!! " + alerte + " !!!")
+            sys.stderr.write("!!! " + alerte + " !!!")
+
+
+def ign_attr(fonction):
+    """Décorateur destiné à ignorer les exceptions AttributeError"""
+    def decorateur(fonction):
+        try:
+            fonction
+        except AttributeError:
+            pass
+    return decorateur
 
 
 # Classes ##############################################################
@@ -445,7 +454,7 @@ class Partition:
         quilisma = 'w'
         liquescence = '~'
         speciaux = 'osvOSV'
-        barres = '`, ;:'
+        barres = '`,;:'
         bemol = "x"
         becarre = "y"
         coupures = '/ '
@@ -504,30 +513,9 @@ class Partition:
                     # Calcul des durées : la dernière note d'un
                     # neume n'est jamais plus courte que la pénultième.
                     try:
-                        if neume[-1].duree < neume[-2].duree:
-                            neume[-1].duree = neume[-2].duree
+                        neume[-1].duree_egaliser()
                     except IndexError:
                         pass
-                    # L'exception suivante est levée si le dernier
-                    # symbole est une barre ou une coupure. En ce cas,
-                    # on s'assure (ce qui ne devrait jamais arriver
-                    # en fin de neume) qu'elle n'était pas précédée
-                    # de notes auxquelles appliquer le traitement
-                    # précédent.
-                    except AttributeError:
-                        try:
-                            i = -2
-                            while not isinstance(neume[i], Note):
-                                i -= 1
-                            derniere = neume[i]
-                            i -= 1
-                            while not isinstance(neume[i], Note):
-                                i -= 1
-                            avantderniere = neume[i]
-                            if derniere.duree < avantderniere.duree:
-                                derniere.duree = avantderniere.duree
-                        except IndexError:
-                            pass
                     # Ajout du neume à la mélodie, de la syllabe au mot,
                     # réinitialisation de la syllabe et du neume.
                     mot.append(syllabe)
@@ -541,7 +529,7 @@ class Partition:
                 # Pour cette raison, on renvoie un avertissement.
                 elif signe[1] == '[':
                     musique = 2
-                    print("Commande personnalisée ignorée")
+                    sys.stderr.write("Commande personnalisée ignorée")
                 # A priori, on s'attend à rencontrer une note.
                 elif signe[1].lower() in gabcnotes:
                     signesspeciaux = 0
@@ -550,7 +538,8 @@ class Partition:
                         Note(
                             gabc=signe,
                             gabchauteur=signe,
-                            bemol=b
+                            bemol=b,
+                            precedent=neume[-1] if len(neume) > 1 else None
                             )
                         )
                 # Strophas, oriscus, etc.
@@ -563,8 +552,9 @@ class Partition:
                         neume.append(
                             Note(
                                 gabc=signe,
-                                hauteur=neume[-1].gabc,
-                                bemol=b
+                                gabchauteur=neume[-1].gabc,
+                                bemol=b,
+                                precedent=neume[-1] if len(neume) > 1 else None
                                 )
                             )
                 # Durées et épisèmes.
@@ -574,118 +564,54 @@ class Partition:
                     if signe[1] == ictus:
                         neume[-1].ly += '-!'
                     elif signe[1] == episeme:
-                        while not isinstance(neume[notesretenues], Note):
-                            notesretenues -= 1
-                        if neume[notesretenues].duree == DUREE_EPISEME:
-                            notesretenues -= 1
-                        while not isinstance(neume[notesretenues], Note):
-                            notesretenues -= 1
-                        neume[notesretenues].duree = DUREE_EPISEME
-                        neume[notesretenues].ly += '--'
+                        neume[-1].duree_retenir(DUREE_EPISEME)
                     elif signe[1] == point:
-                        while not isinstance(neume[notesretenues], Note):
-                            notesretenues -= 1
-                        if neume[notesretenues].duree == DUREE_POINT:
-                            notesretenues -= 1
-                        while not isinstance(neume[notesretenues], Note):
-                            notesretenues -= 1
-                        neume[notesretenues].duree = DUREE_POINT
-                        neume[notesretenues].ly = neume[notesretenues].ly\
-                            .replace('8', '4')
+                        neume[-1].duree_retenir(DUREE_POINT)
                     elif signe[1] == quilisma:
-                        neume[-2].duree = DUREE_AVANT_QUILISMA
-                        if '--' not in neume[-2].ly:
-                            neume[-2].ly += '--'
-                        neume[-1].ly += '\prall'
+                        neume[-1].appliquer_quilisma()
                     elif signe[1] == liquescence:
                         neume[-1].ly = '\\tiny %s \\normalsize' % neume[-1].ly
-                    neume.append(SigneRythmique(gabc=signe))
+                    neume.append(SigneRythmique(
+                        gabc=signe,
+                        precedent=neume[-1] if len(neume) > 1 else None
+                    ))
                 # Altérations.
                 elif signe[1] in (bemol, becarre):
+                    hauteuralteration = neume[-1].gabchauteur[1]
+                    neume = neume[:-1]
                     if signe[1] == bemol:
-                        b = b + neume[-1].gabc[1]
-                        neume = neume[:-1]
+                        b = b + hauteuralteration
                     elif signe[1] == becarre:
-                        b = b.replace(neume[-1].gabc[1], '')
-                        neume = neume[:-1]
-                    neume.append(Alteration(gabc=signe))
+                        b = b.replace(hauteuralteration, '')
+                    neume.append(Alteration(
+                        gabc=(signe[0], hauteuralteration + signe[1]),
+                        precedent=neume[-1] if len(neume) > 1 else None
+                    ))
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
                 # des coupures, s'assurer pour le moins que la dernière
                 # note d'un élément n'est pas plus courte que la
                 # pénultième.
                 elif signe[1] in coupures:
-                    try:
-                        if neume[-1].duree < neume[-2].duree:
-                            neume[-1].duree = neume[-2].duree
-                    except IndexError:
-                        pass
-                    # Cas où le symbole précédent n'était pas une note.
-                    except AttributeError:
-                        try:
-                            if neume[-2].duree < neume[-3].duree:
-                                neume[-2].duree = neume[-3].duree
-                        except AttributeError:
-                            try:
-                                if neume[-3].duree < neume[-4].duree:
-                                    neume[-3].duree = neume[-4].duree
-                            except AttributeError:
-                                if neume[-4].duree < neume[-5].duree:
-                                    neume[-4].duree = neume[-5].duree
-                    # Traitement des coupures doubles (ou plus, mais
-                    # cela ne devrait pas arriver).
-                    try:
-                        if neume[-1].gabc[1] == ''\
-                                and type(neume[-2]) == Coupure:
-                                    neume = neume[:-1]
-                                    cesure = True
-                        if type(neume[-1]) == Coupure:
-                            neume[-1] = Coupure(
-                                gabc=(
-                                    signe[0],
-                                    neume[-1].gabc[1] + signe[1]
-                                    )
-                                )
-                        else:
-                            neume.append(Coupure(gabc=signe))
-                            if not cesure:
-                                neume.append(Barre(gabc=(signe[0], '')))
-                            else:
-                                cesure = False
-                    # Dans le cas exceptionnel où l'on a une parenthèse
-                    # dans le texte, une exception est levée, que l'on
-                    # ignore.
-                    # TODO: Cela entraîne des aberrations dans la
-                    # mélodie, non traitées pour l'instant vue la rareté
-                    # du cas.
-                    except IndexError:
-                        pass
+                    neume[-1].duree_egaliser()
+                    neume.append(Coupure(
+                        gabc=signe,
+                        precedent=neume[-1]
+                    ))
                 elif signe[1] in cesures:
-                    cesure = True
+                    neume.append(Coupure(
+                        gabc=signe,
+                        precedent=neume[-1]
+                    ))
                 # Une barre annule les altérations accidentelles,
                 # et provoque un "posé", d'où léger rallongement de la
                 # note précédente.
                 elif signe[1] in barres:
-                    if signe[1] == ';':
-                        pose = .5
-                    elif signe[1] == ':':
-                        pose = 1
-                    else:
-                        pose = 0
-                    try:
-                        neume[-1].duree += pose
-                    except IndexError:
-                        i = -1
-                        while not isinstance(melodie[-1][i], Note):
-                            i -= 1
-                        melodie[-1][i].duree += pose
-                    # Si l'exception suivante est levée, c'est que l'on
-                    # a affaire à une double barre.
-                    except AttributeError:
-                        neume = neume[:-1]
-                        signe = (signe[0], '::')
                     b = '' + self.b
-                    neume.append(Barre(gabc=signe))
+                    neume.append(Barre(
+                        gabc=signe,
+                        precedent=neume[-1] if len(neume) > 1 else None
+                    ))
             # Traitement par le vide des commandes personnalisées.
             elif musique == 2:
                 if signe[1] == ']':
@@ -698,6 +624,17 @@ class Partition:
         On transpose automatiquement sur une tessiture moyenne."""
         # Calcul de la hauteur idéale.
         self.transposition = 66 - int(sum(self.tessiture.values())/2)
+
+    @property
+    def melodie(self):
+        """Mélodie de la partition.
+
+        Retour d'une chaîne de caractères contenant la mélodie en gabc.
+        """
+        return ' '.join(
+            ''.join(str(note) for note in neume)
+            for neume in self.musique
+        )
 
     @property
     def paroles(self):
@@ -737,14 +674,35 @@ class Element:
     """Élément d'une partition
 
     Il peut s'agir d'une note, d'un épisème, d'une barre…
+    Cette classe est celle dont héritent chacun des types d'éléments. Elle
+    sert surtout à référencer l'élément précédent, de façon à simplifier
+    certaines opérations rétroactives.
 
     """
     def __init__(self, **parametres):
         if 'gabc' in parametres:
             self.gabc = parametres['gabc']
+        if 'precedent' in parametres:
+            self.precedent = parametres['precedent']
 
     def __repr__(self):
         return self.gabc[1]
+
+    def __getattr__(self, attribut):
+        try:
+            return getattr(self.precedent, attribut)
+        except AttributeError as err:
+            sys.stderr.write(str(err) + '\n')
+            return self._fonction_inutile
+
+    def __setattr__(self, attribut, valeur):
+        try:
+            object.__setattr__(self, attribut, valeur)
+        except AttributeError:
+            object.__setattr__(self.precedent, attribut, valeur)
+
+    def _fonction_inutile(self, *args, **params):
+        pass
 
 
 class Alteration(Element):
@@ -767,6 +725,21 @@ class Barre(Element):
     """Barres délimitant les incises"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
+        self.poser_note_precedente()
+
+    def poser(self, pose):
+        """Ignorer le posé venant de la barre suivante"""
+        pass
+
+    @ign_attr
+    def poser_note_precedente(self):
+        pose = {
+            "`": 0,
+            ",": 0,
+            ";": 0.5,
+            ":": 1,
+        }[self.gabc[1]]
+        self.precedent.poser(pose)
 
     @property
     def ly(self):
@@ -786,10 +759,32 @@ class Barre(Element):
             }[self.gabc[1]]
 
 
+class Clef(Element):
+    """Clefs"""
+    def __init__(self, **parametres):
+        Element.__init__(self, **parametres)
+
+    @property
+    def ly(self):
+        """Traitement (par le vide) des cles sous lilypond"""
+        return ''
+
+    @property
+    def nom(self):
+        """Nom de la cle"""
+        return self.gabc[1]
+
+
 class Coupure(Element):
     """Coupures neumatiques"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
+
+    def __repr__(self):
+        if self.nom == ' ':
+            return '\\ '
+        else:
+            return Element.__repr__(self)
 
     @property
     def ly(self):
@@ -822,6 +817,7 @@ class Note(Element):
     """Note de musique"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
+        self.duree = 1
         self.b = ''
         if 'bemol' in parametres:
             self.b = parametres['bemol']
@@ -830,8 +826,32 @@ class Note(Element):
         if 'duree' in parametres:
             self.duree = parametres['duree']
         if 'gabchauteur' in parametres:
+            self.gabchauteur = parametres['gabchauteur']
             self.hauteur, self.duree = self.g2mid(parametres['gabchauteur'])
         self.ly = self.g2ly()
+
+    @ign_attr
+    def duree_egaliser(self):
+        if self.duree < self.precedent.duree:
+                self.duree = self.precedent.duree
+
+    def duree_retenir(self, retenue):
+        if self.duree < retenue:
+            self.duree = retenue
+            if retenue == DUREE_EPISEME:
+                self.ly += '--'
+            elif retenue == DUREE_POINT:
+                self.ly = self.ly.replace('8', '4')
+        else:
+            self.precedent.duree_retenir(retenue)
+
+    def appliquer_quilisma(self):
+        self.precedent.duree_retenir(DUREE_AVANT_QUILISMA)
+        self.ly += '\prall'
+
+    def poser(self, pose):
+        """Appliquer le posé réclamé par la barre suivante"""
+        self.duree += pose
 
     @property
     def nom(self):
@@ -954,7 +974,7 @@ class Note(Element):
         # il peut s'agir d'une erreur.
         if lettre in self.b:
             if notes[lettre] != 'si':
-                print(notes[lettre] + ' bémol rencontré')
+                sys.stderr.write(notes[lettre] + ' bémol rencontré')
             hauteur -= 1
         return hauteur, duree
 
@@ -996,7 +1016,7 @@ class Lily:
         for neume in musique:
             for i, note in enumerate(neume):
                 # Traitement des notes.
-                if type(note) == Note:
+                if type(note) in (Note, Alteration):
                     # La noire va un peu nous compliquer la vie.
                     noire = ('4' in note.ly)
                     # On ferme la ligature avant la noire.
@@ -1029,7 +1049,7 @@ class Lily:
                         ligatureouverte = True
                 # Traitement des coupures.
                 elif type(note) == Coupure:
-                    notes += '] '
+                    notes += ']'
                     ligatureouverte = False
                 # Traitement des barres.
                 elif type(note) == Barre:
@@ -1058,7 +1078,10 @@ class Lily:
         return notes\
             .replace('-!--', '---!')\
             .replace(' \\normalsize)', ') \\normalsize')\
-            .replace(' \\normalsize]', '] \\normalsize')
+            .replace(' \\normalsize]', '] \\normalsize')\
+            .replace(')]', '])')\
+            .replace('[]', '')\
+            .replace('()', '')
 
     def paroles(self, texte, musique):
         """Renvoi des paroles lilypond à partir du texte de la partition"""
