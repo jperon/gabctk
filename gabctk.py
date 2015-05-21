@@ -8,6 +8,7 @@ TITRE = "Cantus"
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
+DEBUG = False
 LILYPOND_ENTETE = '''\\version "2.18"
 
 \header {
@@ -140,7 +141,7 @@ def gabctk(commande, arguments):
         elif opt in ("-a", "--alerter"):
             alertes.append(arg)
         elif opt in ("-v", "--verbose"):
-            debug = True
+            DEBUG = True
     # Si les arguments n'ont pas été saisis explicitement,
     # considérer le premier comme étant le gabc en entrée ;
     # en l'absence de deuxième, donner à la sortie midi et à la sortie
@@ -261,11 +262,11 @@ def verifier(alertes, texte):
 
 def ign_attr(fonction):
     """Décorateur destiné à ignorer les exceptions AttributeError"""
-    def decorateur(fonction):
+    def decorateur(fonction, *args, **params):
         try:
             fonction
-        except AttributeError:
-            pass
+        except AttributeError as err:
+            sys.stderr.write(err)
     return decorateur
 
 
@@ -283,9 +284,8 @@ class Gabc:
     def parties(self):
         """Tuple contenant d'une part les en-têtes,
         d'autre part le corps du gabc"""
-        resultat = self.code
         regex = re.compile('%%\n')
-        resultat = regex.split(resultat)
+        resultat = regex.split(self.code)
         return resultat
 
     @property
@@ -357,22 +357,23 @@ class Gabc:
     @property
     def partition(self):
         """Liste de couples (clé, signe gabc)"""
-        resultat = []
         contenu = self.contenu
         # Recherche des clés.
         regex = re.compile('[cf][b]?[1234]')
         cles = regex.findall(contenu)
         # Découpage de la partition en fonction des changements de clé.
         partiestoutes = regex.split(contenu)
-        parties = partiestoutes[0] + partiestoutes[1], partiestoutes[2:]
+        sys.stderr.write(str(partiestoutes))
+        parties = partiestoutes[1:]
+        parties[0] = parties[0][1:]
+        resultat = [(cles[0], '('),]
         # Définition des couples (clé, signe).
         for i, cle in enumerate(cles):
+            resultat.append((cle, cle))
             try:
                 for j, n in enumerate(parties[i]):
                     # Élimination des "déchets" initiaux.
-                    if j < 2:
-                        pass
-                    elif j == 3 and n == ' ':
+                    if j <= 3 and n == ' ':
                         pass
                     # Enregistrement des informations utiles.
                     else:
@@ -384,6 +385,7 @@ class Gabc:
                     + "changements de clé sans notes subséquentes. "
                     + "Le résultat n'est pas garanti.\n"
                     )
+                raise
         return resultat
 
 
@@ -438,7 +440,8 @@ class Partition:
 
         pour en sortir :
             − la mélodie (liste d'objets notes) ;
-            − le texte (chaîne de caractères)."""
+            − le texte (chaîne de caractères).
+        """
         # # Remarque : la traduction en musique a nécessité certains
         # # choix d'interprétation, qui n'engagent que l'auteur de ce
         # # script…
@@ -458,6 +461,8 @@ class Partition:
         bemol = "x"
         becarre = "y"
         coupures = '/ '
+        custo = '+'
+        custoauto = 'z0'
         # Le '!' sert, en ce qui nous concerne, ou bien à rien, ou bien
         # à rendre une coupure insécable.
         cesures = '!'
@@ -612,6 +617,11 @@ class Partition:
                         gabc=signe,
                         precedent=neume[-1] if len(neume) > 1 else None
                     ))
+                else:
+                    neume.append(Element(
+                        gabc=signe,
+                        precedent=neume[-1] if len(neume) > 1 else None
+                    ))
             # Traitement par le vide des commandes personnalisées.
             elif musique == 2:
                 if signe[1] == ']':
@@ -704,16 +714,15 @@ class Element:
     def _fonction_inutile(self, *args, **params):
         pass
 
+    @property
+    def ly(self):
+        return ''
+
 
 class Alteration(Element):
     """Bémols et bécarres"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
-
-    @property
-    def ly(self):
-        """Les altérations influent sur les notes suivantes"""
-        return ''
 
     @property
     def nom(self):
@@ -765,11 +774,6 @@ class Clef(Element):
         Element.__init__(self, **parametres)
 
     @property
-    def ly(self):
-        """Traitement (par le vide) des cles sous lilypond"""
-        return ''
-
-    @property
     def nom(self):
         """Nom de la cle"""
         return self.gabc[1]
@@ -787,11 +791,6 @@ class Coupure(Element):
             return Element.__repr__(self)
 
     @property
-    def ly(self):
-        """Traitement (par le vide) des coupures en lilypond"""
-        return ''
-
-    @property
     def nom(self):
         """Nom de la coupure"""
         return self.gabc[1]
@@ -801,11 +800,6 @@ class SigneRythmique(Element):
     """Épisèmes, points"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
-
-    @property
-    def ly(self):
-        """L'épisème ou le point influent déjà sur la note précédente"""
-        return ''
 
     @property
     def nom(self):
@@ -828,13 +822,14 @@ class Note(Element):
         if 'gabchauteur' in parametres:
             self.gabchauteur = parametres['gabchauteur']
             self.hauteur, self.duree = self.g2mid(parametres['gabchauteur'])
-        self.ly = self.g2ly()
+        self._ly = self.g2ly()
 
     @ign_attr
     def duree_egaliser(self):
         if self.duree < self.precedent.duree:
                 self.duree = self.precedent.duree
 
+    @ign_attr
     def duree_retenir(self, retenue):
         if self.duree < retenue:
             self.duree = retenue
@@ -852,6 +847,14 @@ class Note(Element):
     def poser(self, pose):
         """Appliquer le posé réclamé par la barre suivante"""
         self.duree += pose
+
+    @property
+    def ly(self):
+        return self._ly
+
+    @ly.setter
+    def ly(self, valeur):
+        self._ly = valeur
 
     @property
     def nom(self):
