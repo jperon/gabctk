@@ -36,7 +36,7 @@ Paroles = \\lyricmode {
       \\set Staff.autoBeaming = ##f
       \\new Voice = "theme" {
         \\override Score.Slur #'stencil = ##f
-        \\cadenzaOn \\transpose c %(transposition)s \\MusiqueTheme
+        \\cadenzaOn \\transpose c %(transposition)s{\\MusiqueTheme}
         \\revert Score.Slur #'stencil
       }
     >>
@@ -101,13 +101,14 @@ def gabctk(commande, arguments):
     try:
         opts, args = getopt.getopt(
             arguments,
-            "hi:o:l:e:b:t:d:n:a:v",
+            "hi:o:l:e:m:b:t:d:n:a:v",
             [
                 "help",             # Aide
                 "entree=",          # Fichier gabc
                 "midi=",            # Fichier MIDI
-                "lily=",            # Fichier ly
-                "export=",          # Fichier texte
+                "lily=",            # Code ly
+                "export=",          # Texte
+                "musique=",         # Code gabc
                 "tab=",             # Fichier "tablature" pour accompagnement
                 "tempo=",           # Tempo de la musique
                 "transposition=",   # Transposition
@@ -129,6 +130,8 @@ def gabctk(commande, arguments):
             sortieLily = FichierTexte(arg)
         elif opt in ("-e", "--export"):
             texte = FichierTexte(arg)
+        elif opt in ("-m", "--musique"):
+            musique = FichierTexte(arg)
         elif opt in ("-b", "--tab"):
             tab = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
@@ -192,9 +195,9 @@ def gabctk(commande, arguments):
         print(lily.texte, '\n')
         # − la tessiture obtenue après transposition.
         print(
-            Note(hauteur=partition.tessiture['minimum']).nom,
+            Note(hauteur=partition.tessiture['minimum']).note,
             " - ",
-            Note(hauteur=partition.tessiture['maximum']).nom,
+            Note(hauteur=partition.tessiture['maximum']).note,
             " (",
             str(partition.transposition),
             ')',
@@ -205,6 +208,7 @@ def gabctk(commande, arguments):
         midi.ecrire(sortieMidi.chemin)
     except AttributeError:
         pass
+    # Créer le fichier lilypond
     try:
         lily.ecrire(sortieLily.chemin)
     except AttributeError:
@@ -223,7 +227,10 @@ def gabctk(commande, arguments):
     # écrire les paroles dans un fichier texte.
     try:
         texte.ecrire(paroles + '\n')
-        print('\n', partition.melodie)
+    except UnboundLocalError:
+        pass
+    try:
+        musique.ecrire(partition.melodie)
     except UnboundLocalError:
         pass
     # Si l'utilisateur l'a demandé,
@@ -544,7 +551,7 @@ class Partition:
                             gabc=signe,
                             gabchauteur=signe,
                             bemol=b,
-                            precedent=neume[-1] if len(neume) > 1 else None
+                            precedent=neume[-1] if len(neume) else None
                             )
                         )
                 # Strophas, oriscus, etc.
@@ -559,26 +566,16 @@ class Partition:
                                 gabc=signe,
                                 gabchauteur=neume[-1].gabc,
                                 bemol=b,
-                                precedent=neume[-1] if len(neume) > 1 else None
+                                precedent=neume[-1] if len(neume) else None
                                 )
                             )
                 # Durées et épisèmes.
                 elif signe[1] in (
                         ictus, episeme, point, quilisma, liquescence
                 ):
-                    if signe[1] == ictus:
-                        neume[-1].ly += '-!'
-                    elif signe[1] == episeme:
-                        neume[-1].duree_retenir(DUREE_EPISEME)
-                    elif signe[1] == point:
-                        neume[-1].duree_retenir(DUREE_POINT)
-                    elif signe[1] == quilisma:
-                        neume[-1].appliquer_quilisma()
-                    elif signe[1] == liquescence:
-                        neume[-1].ly = '\\tiny %s \\normalsize' % neume[-1].ly
                     neume.append(SigneRythmique(
                         gabc=signe,
-                        precedent=neume[-1] if len(neume) > 1 else None
+                        precedent=neume[-1] if len(neume) else None
                     ))
                 # Altérations.
                 elif signe[1] in (bemol, becarre):
@@ -590,7 +587,7 @@ class Partition:
                         b = b.replace(hauteuralteration, '')
                     neume.append(Alteration(
                         gabc=(signe[0], hauteuralteration + signe[1]),
-                        precedent=neume[-1] if len(neume) > 1 else None
+                        precedent=neume[-1] if len(neume) else None
                     ))
                 # Fin d'élément neumatique : faute de pouvoir déterminer
                 # aussi précisément que dans les manuscrits la valeur
@@ -604,7 +601,7 @@ class Partition:
                         precedent=neume[-1]
                     ))
                 elif signe[1] in cesures:
-                    neume.append(Coupure(
+                    neume.append(Cesure(
                         gabc=signe,
                         precedent=neume[-1]
                     ))
@@ -613,15 +610,15 @@ class Partition:
                 # note précédente.
                 elif signe[1] in barres:
                     b = '' + self.b
-                    neume.append(Barre(
+                    barre = Barre(
                         gabc=signe,
-                        precedent=neume[-1] if len(neume) > 1 else None
-                    ))
-                else:
-                    neume.append(Element(
-                        gabc=signe,
-                        precedent=neume[-1] if len(neume) > 1 else None
-                    ))
+                        precedent=neume[-1] if len(neume) else None
+                    )
+                    if isinstance(barre.precedent, Barre):
+                        barre.gabc = (barre.gabc[0], '::')
+                        neume[-1] = barre
+                    else:
+                        neume.append(barre)
             # Traitement par le vide des commandes personnalisées.
             elif musique == 2:
                 if signe[1] == ']':
@@ -695,14 +692,19 @@ class Element:
         if 'precedent' in parametres:
             self.precedent = parametres['precedent']
 
-    def __repr__(self):
+    @property
+    def nom(self):
+        """Nom de l'élément"""
         return self.gabc[1]
+
+    def __repr__(self):
+        return self.nom
 
     def __getattr__(self, attribut):
         try:
             return getattr(self.precedent, attribut)
         except AttributeError as err:
-            sys.stderr.write(str(err) + '\n')
+            # sys.stderr.write(str(err) + '\n')
             return self._fonction_inutile
 
     def __setattr__(self, attribut, valeur):
@@ -724,11 +726,6 @@ class Alteration(Element):
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
 
-    @property
-    def nom(self):
-        """Nom de l'altération"""
-        return self.gabc[1]
-
 
 class Barre(Element):
     """Barres délimitant les incises"""
@@ -747,36 +744,25 @@ class Barre(Element):
             ",": 0,
             ";": 0.5,
             ":": 1,
-        }[self.gabc[1]]
+        }[self.nom]
         self.precedent.poser(pose)
 
     @property
     def ly(self):
-        """Expression en lilypond"""
-        # TODO: trouver une meilleure expression pour la demi-barre.
-        return '''\\bar "%s"''' % self.nom
-
-    @property
-    def nom(self):
         """Correspondance entre les barres gabc et les barres lilypond"""
-        return {
+        return ''' \\bar "{}"'''.format({
             '': "",
             ',': "'",
             ';': "'",
             ':': "|",
             '::': "||"
-            }[self.gabc[1]]
+        }[self.nom])
 
 
 class Clef(Element):
     """Clefs"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
-
-    @property
-    def nom(self):
-        """Nom de la cle"""
-        return self.gabc[1]
 
 
 class Coupure(Element):
@@ -790,21 +776,27 @@ class Coupure(Element):
         else:
             return Element.__repr__(self)
 
-    @property
-    def nom(self):
-        """Nom de la coupure"""
-        return self.gabc[1]
+
+class Cesure(Element):
+    """Césures neumatiques (symbole !)"""
+    def __init__(self, **parametres):
+        Element.__init__(self, **parametres)
 
 
 class SigneRythmique(Element):
     """Épisèmes, points"""
     def __init__(self, **parametres):
         Element.__init__(self, **parametres)
-
-    @property
-    def nom(self):
-        """Nom du signe"""
-        return self.gabc[1]
+        if self.nom == "'":
+            self.precedent.appliquer_ictus()
+        elif self.nom == '_':
+            self.precedent.duree_retenir(DUREE_EPISEME)
+        elif self.nom == '.':
+            self.precedent.duree_retenir(DUREE_POINT)
+        elif self.nom == 'w':
+            self.precedent.appliquer_quilisma()
+        elif self.nom == '~':
+            self.precedent.appliquer_liquescence()
 
 
 class Note(Element):
@@ -834,15 +826,21 @@ class Note(Element):
         if self.duree < retenue:
             self.duree = retenue
             if retenue == DUREE_EPISEME:
-                self.ly += '--'
+                self._ly = self._ly + '--'
             elif retenue == DUREE_POINT:
-                self.ly = self.ly.replace('8', '4')
+                self._ly = self._ly.replace('8', '4')
         else:
             self.precedent.duree_retenir(retenue)
 
+    def appliquer_ictus(self):
+        self._ly += '-!'
+
     def appliquer_quilisma(self):
         self.precedent.duree_retenir(DUREE_AVANT_QUILISMA)
-        self.ly += '\prall'
+        self._ly += '\prall'
+
+    def appliquer_liquescence(self):
+        self._ly = '\\tiny {} \\normalsize'.format(self._ly)
 
     def poser(self, pose):
         """Appliquer le posé réclamé par la barre suivante"""
@@ -850,14 +848,14 @@ class Note(Element):
 
     @property
     def ly(self):
-        return self._ly
+        return ' ' + self._ly
 
     @ly.setter
     def ly(self, valeur):
         self._ly = valeur
 
     @property
-    def nom(self):
+    def note(self):
         """Renvoi du nom "canonique" de la note"""
         o = int(self.hauteur / 12) - 2
         n = int(self.hauteur % 12)
@@ -873,6 +871,10 @@ class Note(Element):
                 'La',
                 'Sib',
                 'Si')[n] + str(o)
+
+    @property
+    def pointee(self):
+        return (self.duree == DUREE_POINT)
 
     def g2ly(self):
         """Renvoi du code lilypond correspondant à la note"""
@@ -1000,91 +1002,49 @@ class Lily:
 
     def notes(self, musique):
         """Renvoi de la mélodie lilypond à partir des notes de la partition"""
-        # Initialisation des variables.
-        notes = ''
-        prochainenote = ''
-        # Drapeaux permettant de savoir où l'on en est :
-        #   − ligatureouverte indique si l'élément neumatique est
-        #     commencé ;
-        #   − neumeouvert indique si le neume est commencé, ce qui se
-        #     traduit dans le code lilypond par une liaison (qui permet
-        #     d'associer l'ensemble des notes qu'elle couvre à la
-        #     syllabe concernée) ; cette liaison est rendue invisible
-        #     du fait des paramètres du préambule lilypond ;
-        #   − noire indique si la note est une noire (auquel cas elle
-        #     ne peut s'insérer dans une ligature).
-        ligatureouverte = False
-        neumeouvert = False
-        noire = False
+        melodie = ''
+        debutneume = True
+        debutelement = True
         for neume in musique:
-            for i, note in enumerate(neume):
-                # Traitement des notes.
-                if type(note) in (Note, Alteration):
-                    # La noire va un peu nous compliquer la vie.
-                    noire = ('4' in note.ly)
-                    # On ferme la ligature avant la noire.
-                    if ligatureouverte and noire:
-                        notes += '] '
-                        ligatureouverte = False
-                    # On ajoute la note à la partition.
-                    notes += ' ' + note.ly
-                    # Si la note est la première d'un neume qui en
-                    # contient plusieurs, il faut ouvrir le neume.
-                    if i == 0:
-                        try:
-                            if neume[i+1]:
-                                notes += '('
-                                neumeouvert = True
-                                # La première note, si elle n'est pas
-                                # une noire, ouvre aussi une ligature.
-                                if not noire:
-                                    notes += '['
-                                    ligatureouverte = True
-                        # Cette exception sera levée si le neume ne
-                        # comporte qu'une seule note, ce qui évite des
-                        # ligatures et liaisons inutiles.
-                        except IndexError:
-                            pass
-                    # Si une noire ou une barre nous a forcés à fermer
-                    # la ligature, il faut la rouvrir ensuite.
-                    elif not ligatureouverte and not noire:
-                        notes += '['
-                        ligatureouverte = True
-                # Traitement des coupures.
-                elif type(note) == Coupure:
-                    notes += ']'
-                    ligatureouverte = False
-                # Traitement des barres.
-                elif type(note) == Barre:
-                    # On ferme la ligature avant la barre.
-                    if ligatureouverte:
-                        notes += ']'
-                        ligatureouverte = False
-                    # Si la barre est le dernier élément du neume, il
-                    # faut achever ce dernier avant d'écrire la barre.
-                    if neumeouvert and i == len(neume)-1:
-                        notes += ')'
-                        neumeouvert = False
-                    # On ajoute la barre à la partition.
-                    notes += ' ' + note.ly + '\n'
-            # Si le neume comporte plusieurs notes, on ferme si besoin
-            # ligatures et liaisons.
-            if i > 0:
-                if neumeouvert:
-                    notes += ')'
-                    neumeouvert = False
-                if ligatureouverte:
-                    notes += ']'
-                    ligatureouverte = False
-        # On renvoie la partition ainsi obtenue, en mettant le cas
-        # échéant les épisèmes horizontaux avant les verticaux.
-        return notes\
-            .replace('-!--', '---!')\
-            .replace(' \\normalsize)', ') \\normalsize')\
+            for signe in neume:
+                if type(signe) in (Coupure, Barre) and not debutelement:
+                    melodie += ']'
+                    debutelement = True
+                elif (
+                        not debutelement
+                        and isinstance(signe, Note)
+                        and signe.pointee
+                ):
+                    melodie += ']'
+                    debutelement = True
+                melodie += signe.ly
+                if (
+                        debutneume
+                        and isinstance(signe, Note)
+                        and len(
+                            [note for note in neume if isinstance(note, Note)]
+                        ) > 1
+                ):
+                    melodie += '('
+                    debutneume = False
+                if (
+                        debutelement
+                        and isinstance(signe, Note)
+                        and not signe.pointee
+                ):
+                    melodie += '['
+                    debutelement = False
+            if not debutelement:
+                melodie += ']'
+                debutelement = True
+            if not debutneume:
+                melodie += ')'
+                debutneume = True
+            melodie += '\n'
+        return melodie\
             .replace(' \\normalsize]', '] \\normalsize')\
-            .replace(')]', '])')\
-            .replace('[]', '')\
-            .replace('()', '')
+            .replace(' \\normalsize)', ') \\normalsize')\
+            .replace('[]', '')
 
     def paroles(self, texte, musique):
         """Renvoi des paroles lilypond à partir du texte de la partition"""
