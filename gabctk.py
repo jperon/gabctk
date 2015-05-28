@@ -171,7 +171,8 @@ def gabctk(commande, arguments):
     partition = gabc.partition(transposition=transposition)
     # Créer les objets midi et lilypond.
     midi = Midi(partition, tempo)
-    #lily = Lily(partition, tempo)
+    lily = Lily(partition, tempo)
+    print(lily.musique)
     i = 0
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
     if DEBUG:
@@ -234,19 +235,12 @@ def gabctk(commande, arguments):
     # Si l'utilisateur l'a demandé,
     # écrire une tablature dans un fichier texte.
     try:
-        tablature = ''
-        for mot in partition.texte:
-            for syllabe in mot:
-                tablature += (
-                    '{}\t{}\n'.format(
-                        syllabe,
-                        ' '.join([note.ly for note in partition.musique[i]])
-                        )
-                    )
-                i += 1
-            tablature += '//\n'
+        tablature = '\n'.join(
+            '{0}\t{1}'.format(syllabe, neume.ly) for syllabe, neume in
+            zip(partition.syllabes, partition.musique)
+        )
         tab.ecrire(tablature + '\n')
-    except (UnboundLocalError, IndexError):
+    except (UnboundLocalError):
         pass
 
 
@@ -476,11 +470,9 @@ class ObjetLie:
 
     """
     def __init__(self, precedent):
-        self._precedent = precedent
+        self.precedent = precedent
 
     def __getattr__(self, attribut):
-        if attribut != 'cle':
-            print(attribut)
         try:
             return getattr(self.precedent, attribut)
         except AttributeError as err:
@@ -567,6 +559,7 @@ class Neume:
     """Ensemble de signes musicaux"""
     def __init__(self, gabc=None, signes=None, syllabe=None):
         self.syllabe = syllabe
+        self.element_ferme = True
         if signes:
             self.signes = signes
         else:
@@ -592,6 +585,10 @@ class Neume:
             if len(self.signes)
             else ''
         )
+
+    @property
+    def ly(self):
+        return ''.join(signe.ly for signe in self.signes)
 
     def traiter_gabc(self, gabc):
         # Expression correspondant aux clés.
@@ -637,10 +634,14 @@ class Neume:
                             precedent=self.signes[-1] if len(self.signes)
                             else None,
                         ))
-        try:
-            self.signes[-1].duree_egaliser()
-        except AttributeError:
-            pass
+        for signe in self.signes:
+            if isinstance(signe, Note):
+                signe.ouvrir_neume()
+                break
+        for signe in reversed(self.signes):
+            if isinstance(signe, Note):
+                signe.fermer_neume()
+                break
 
 
 class Signe(ObjetLie):
@@ -671,31 +672,14 @@ class Signe(ObjetLie):
     def __str__(self):
         return self.gabc
 
-    def __getattr__(self, attribut):
-        try:
-            return getattr(self.precedent, attribut)
-        except AttributeError as err:
-            if DEBUG:
-                sys.stderr.write(str(err) + '\n')
-            raise
-
-    def __setattr__(self, attribut, valeur):
-        try:
-            object.__setattr__(self, attribut, valeur)
-        except AttributeError:
-            try:
-                setattr(self.precedent, attribut, valeur)
-            except AttributeError as err:
-                if DEBUG:
-                    sys.stderr.write('Pas de précédent : ' + str(err) + '\n')
-                raise
-
 
 class Alteration(Signe):
     """Bémols et bécarres"""
     def __init__(self, gabc, **params):
         Signe.__init__(self, gabc, **params)
         self.gabc = self.precedent.gabc + gabc
+        if self.precedent.premier_element:
+            self.neume.element_ferme = True
         self.precedent = \
             self.neume.signes[-2] if len(self.neume.signes) > 1 else None
         del self.neume.signes[-1]
@@ -718,6 +702,8 @@ class Barre(Signe):
         Signe.__init__(self, gabc, **params)
         try:
             self.precedent.duree_egaliser()
+            self.precedent.fermer_element()
+            print(self.neume.element_ferme)
         except AttributeError:
             pass
         self.poser_note_precedente()
@@ -748,7 +734,7 @@ class Barre(Signe):
             ';': "'",
             ':': "|",
             '::': "||"
-        }[self.gabc]) + '\n'
+        }[self.gabc])
 
 
 class Clef(Signe):
@@ -819,6 +805,11 @@ class Note(Signe):
         self.hauteur, self.duree = self.g2mid()
         self._ly = self.g2ly()
         self._nuances = []
+        if self.neume.element_ferme:
+            self.ouvrir_element()
+            self.premier_element = True
+        else:
+            self.premier_element = False
 
     def duree_egaliser(self):
         try:
@@ -830,23 +821,21 @@ class Note(Signe):
     def appliquer(self, nuance):
         if nuance not in self._nuances:
             self._nuances.append(nuance)
-            if nuance == 'ictus':
-                self._ly += '-!'
-            elif nuance == 'episeme':
+            if nuance == 'episeme':
                 self.retenir(DUREE_EPISEME)
-                self._ly = self._ly + '--'
             elif nuance == 'point':
                 self.retenir(DUREE_POINT)
-                self._ly = self._ly.replace('8', '4')
+                try:
+                    self.precedent.fermer_element()
+                except AttributeError:
+                    pass
             elif nuance == 'quilisma':
                 self.precedent.retenir(DUREE_AVANT_QUILISMA)
-                self.ly += '\prall'
-            elif nuance == 'liquescence':
-                self.liquescence = True
         else:
             if nuance in ('quilisma', 'liquescence'):
                 raise ErreurSyntaxe('Deux {}s consécutifs.'.format(nuance))
-            self.precedent.appliquer(nuance)
+            else:
+                self.precedent.appliquer(nuance)
 
     def poser(self, pose):
         """Appliquer le posé réclamé par la barre suivante"""
@@ -859,39 +848,41 @@ class Note(Signe):
 
     @property
     def ly(self):
-        ly = (
-            ' ' +
-            self._ly +
-            ('(' if not self.precedent and not self.est_dernierenote else '') +
-            (
-                '[' if (
-                    (not self.precedent or isinstance(self.precedent, Coupure))
-                    and
-                    (self.suivant and not type(self.suivant) in (Coupure, Barre))
-                )
-                else ''
-            ) +
-            (
-                ']' if (
-                    (self.precedent and not isinstance(self.precedent, Coupure))
-                    and
-                    (
-                        self.est_dernierenote or
-                        isinstance(self.suivant, Coupure) or
-                        isinstance(self.suivant, Barre)
-                    )
-                )
-                else ''
-            ) +
-            (')\n' if self.precedent and self.est_dernierenote else '')
-        )
-        if self.est_liquescente:
-            ly = '\\tiny {} \\normalsize'.format(self._ly)
+        ly = ' ' + self._ly
+        if 'point' in self._nuances:
+            ly = ly.replace('8', '4')
+        if 'episeme' in self._nuances:
+            ly += '--'
+        if 'ictus' in self._nuances:
+            ly += '-!'
+        if 'quilisma' in self._nuances:
+            ly += '\prall'
+        if 'liquescence' in self._nuances:
+            ly = ' \\tiny{} \\normalsize'.format(ly)
         return ly
 
     @ly.setter
     def ly(self, valeur):
         self._ly = valeur
+
+    def ouvrir_element(self):
+        self.neume.element_ferme = False
+        self._ly += '['
+
+    def fermer_element(self):
+        if 'point' in self._nuances:
+            self._ly = self._ly.replace('[', '')
+        else:
+            self._ly = (self._ly + ']').replace('[]', '')
+            self.neume.element_ferme = True
+
+    def ouvrir_neume(self):
+        self._ly += '('
+
+    def fermer_neume(self):
+        self.duree_egaliser()
+        self._ly = (self._ly + ')').replace('()', '')
+        self.fermer_element()
 
     @property
     def note(self):
@@ -1010,7 +1001,7 @@ class Note(Signe):
         # Par défaut, la durée est à 1 : elle pourra être modifiée par
         # la suite, s'il se rencontre un épisème, un point, etc.
         duree = 1
-        lettre = gabc.lower()
+        lettre = gabc.lower()[0]
         hauteur = hauteurs[lettre]
         # Si la note est altérée par un bémol, l'abaisser d'un demi-ton.
         # N.B : le grégorien n'admet que le si bémol, mais il n'y avait
@@ -1034,15 +1025,24 @@ class NoteSpeciale(Note):
 
     """
     def __init__(self, gabc, precedent=None, **params):
-        if isinstance(precedent, Note):
-            Signe.__init__(self, gabc, precedent=precedent, **params)
-        elif isinstance(precedent, NoteSpeciale):
-            Note.__init__(self, precedent.gabc, precedent)
+        Note.__init__(self, gabc=precedent.gabc, precedent=precedent, **params)
+        if isinstance(precedent, NoteSpeciale):
+            self.gabc = gabc
+        elif isinstance(precedent, Note):
+            self.gabc = self.precedent.gabc + gabc
+            if precedent.premier_element:
+                self.ouvrir_element()
+            self.precedent = \
+                self.neume.signes[-2] if len(self.neume.signes) > 1 else None
+            del self.neume.signes[-1]
         else:
             raise ErreurSyntaxe(gabc + ' sans note précédente')
 
     def retenir(self, duree):
-        self.precedent.retenir(duree)
+        try:
+            self.precedent.retenir(duree)
+        except AttributeError:
+            Note.retenir(self, duree)
 
 
 # # Classes servant à l'export en différents formats.
@@ -1057,15 +1057,26 @@ class Lily:
             "c", "des", "d", "ees", "e", "f",
             "fis", "g", "aes", "a", "bes", "b", "c"
             )[(partition.transposition + 12) % 24]
-        self.musique = self.notes(partition.musique)
+        #~ self.musique = self.notes(partition.musique)
         self.tonalite = partition.tonalite[0]
-        self.texte = self.paroles(partition.texte, partition.musique)
+        self.texte, self.musique = self.traiter_partition(partition)
 
     def notes(self, musique):
-        return ''.join(
+        return '\n'.join(
             ''.join(signe.ly for signe in neume)
             for neume in musique
         )
+
+    def traiter_partition(self, partition):
+        texte = ''
+        musique = ''
+        for mot in partition.mots:
+            parole = ' -- '.join(str(syllabe) for syllabe in mot.syllabes)
+            notes = ''.join(neume.ly for neume in mot.musique)
+            print(parole, notes)
+            texte += parole
+            musique += notes
+        return texte, musique
 
     def notes_old(self, musique):
         """Renvoi de la mélodie lilypond à partir des notes de la partition"""
@@ -1113,7 +1124,7 @@ class Lily:
             .replace(' \\normalsize)', ') \\normalsize')\
             .replace('[]', '')
 
-    def paroles(self, texte, musique):
+    def paroles_old(self, texte, musique):
         """Renvoi des paroles lilypond à partir du texte de la partition"""
         # Initialisation des variables.
         paroles = ''
@@ -1231,7 +1242,7 @@ class Midi:
         transposition = partition.transposition
         for neume in partition.musique:
             for note in (
-                    notes for notes in neume if type(notes) == Note
+                    notes for notes in neume if isinstance(notes,Note)
             ):
                 channel = 0
                 pitch = note.hauteur + transposition
