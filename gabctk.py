@@ -74,7 +74,7 @@ import unicodedata as ud
 # Méthodes globales ####################################################
 
 
-def aide(commande, erreur, code):
+def aide(erreur, code, commande=os.path.basename(sys.argv[0])):
     """Affichage de l'aide"""
     # Tenir compte du message propre à chaque erreur, ainsi que du nom
     # sous lequel la commande a été appelée.
@@ -97,11 +97,10 @@ def aide(commande, erreur, code):
     sys.exit(code)
 
 
-def gabctk(commande, arguments, tempo=TEMPO, debug=DEBUG):
+def traiter_options(arguments):  # pylint:disable=R0912
     """Fonction maîtresse"""
     # Initialisation des variables correspondant aux paramètres.
-    entree = sortiemidi = sortielily = titre = transposition = paroles = None
-    alertes = []
+    options = {'sortie': {}, 'alertes': []}
     # Analyse des arguments de la ligne de commande.
     try:
         opts = getopt.getopt(
@@ -122,53 +121,91 @@ def gabctk(commande, arguments, tempo=TEMPO, debug=DEBUG):
                 "verbose"           # Verbosité de la sortie
             ]
         )[0]
-    except getopt.GetoptError:
-        aide(commande, 'Argument invalide', 1)
+    except getopt.GetoptError as err:
+        aide('Argument invalide : ' + err.args[1], 1)
     for opt, arg in opts:
         if opt == '-h':
-            aide(commande, '', 0)
+            aide('', 0)
         elif opt in ("-i", "--entree"):
-            entree = FichierTexte(arg)
+            options['entree'] = FichierTexte(arg)
         elif opt in ("-o", "--midi"):
-            sortiemidi = Fichier(arg)
+            options['sortie']['midi'] = arg
         elif opt in ("-l", "--lily"):
-            sortielily = FichierTexte(arg)
+            options['sortie']['lily'] = FichierTexte(arg)
         elif opt in ("-e", "--export"):
-            texte = FichierTexte(arg)
+            options['sortie']['texte'] = FichierTexte(arg)
+        elif opt in ("-m", "--musique"):
+            options['sortie']['gabc'] = FichierTexte(arg)
         elif opt in ("-b", "--tab"):
-            tab = FichierTexte(arg)
+            options['sortie']['tab'] = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
-            tempo = int(arg)
+            options['tempo'] = int(arg)
         elif opt in ("-d", "--transposition"):
-            transposition = int(arg)
+            options['transposition'] = int(arg)
         elif opt in ("-n", "--titre"):
-            titre = arg
+            options['titre'] = arg
         elif opt in ("-a", "--alerter"):
-            alertes.append(arg)
+            options['alertes'].append(arg)
         elif opt in ("-v", "--verbose"):
-            debug = True
+            options['debug'] = True
     # Si les arguments n'ont pas été saisis explicitement,
     # considérer le premier comme étant le gabc en entrée ;
     # en l'absence de deuxième, donner à la sortie midi
     # le même nom, en changeant l'extension.
     try:
-        if not entree:
-            entree = FichierTexte(arguments[0])
-        if not sortiemidi:
+        if 'entree' not in options:
+            options['entree'] = FichierTexte(arguments[0])
+        if 'midi' not in options['sortie']:
             try:
                 if arguments[1][-4:] == '.mid':
-                    sortiemidi = Fichier(arguments[1])
+                    options['sortie']['midi'] = arguments[1]
             except IndexError:
-                sortiemidi = Fichier(re.sub('.gabc', '.mid', arguments[0]))
+                options['sortie']['midi'] = \
+                    re.sub('.gabc', '.mid', arguments[0])
     # S'il n'y a aucun argument, afficher l'aide.
     except IndexError:
-        aide(commande, 'aucun argument', 0)
+        aide('aucun argument', 0)
+    # Envoi de l'entrée vers la méthode de traitement
+    gabctk(**options)  # pylint:disable=W0142
+
+
+def sansaccents(input_str):
+    """Renvoie la chaîne d'entrée sans accents"""
+    nkfd_form = ud.normalize('NFKD', input_str)
+    return "".join([c for c in nkfd_form if not ud.combining(c)])
+
+
+def sortie_verbeuse(debug, gabc, partition):
+    """Affichage d'informations de débogage
+
+    − les en-têtes gabc ;
+    − la partition gabc (sans les en-têtes) ;
+    − la partition (texte et ensemble syllabes/neumes).
+    """
+    if debug:
+        print(gabc.entetes, '\n')
+        print(gabc.contenu, '\n')
+        print(partition.texte)
+        print(partition.syllabes)
+
+
+# pylint:disable=R0913
+def gabctk(
+        entree=None,
+        sortie=None,
+        alertes=None,
+        tempo=TEMPO,
+        titre=None,
+        transposition=None,
+        debug=DEBUG,
+):
+    """Export dans les différents formats"""
     # Extraire le contenu du gabc.
     try:
         gabc = Gabc(entree.contenu)
     # Si le gabc n'existe pas, afficher l'aide.
     except FileNotFoundError:
-        aide(commande, 'fichier inexistant', 2)
+        aide('fichier inexistant', 2)
     # Extraire la partition.
     partition = gabc.partition(transposition=transposition)
     titre = \
@@ -178,24 +215,16 @@ def gabctk(commande, arguments, tempo=TEMPO, debug=DEBUG):
     # Créer les objets midi et lilypond.
     midi = Midi(partition, titre=titre, tempo=tempo)
     lily = Lily(partition, titre=titre, tempo=tempo)
-    # Si l'utilisateur a demandé une sortie verbeuse, afficher :
-    if debug:
-        # − les en-têtes gabc ;
-        print(gabc.entetes, '\n')
-        # − la partition gabc (sans les en-têtes) ;
-        print(gabc.contenu, '\n')
-        # − la partition.
-        print(partition.texte)
-        print(partition.syllabes)
+    sortie_verbeuse(debug, gabc, partition)
     # Créer le fichier midi.
     try:
-        midi.ecrire(sortiemidi.chemin)
-    except AttributeError:
+        midi.ecrire(sortie['midi'])
+    except KeyError:
         pass
     # Créer le fichier lilypond
     try:
-        lily.ecrire(sortielily.chemin)
-    except AttributeError:
+        lily.ecrire(sortie['lily'].chemin)
+    except KeyError:
         pass
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
@@ -206,8 +235,8 @@ def gabctk(commande, arguments, tempo=TEMPO, debug=DEBUG):
     # Si l'utilisateur l'a demandé,
     # écrire les paroles dans un fichier texte.
     try:
-        texte.ecrire(paroles + '\n')
-    except UnboundLocalError:
+        sortie['texte'].ecrire(paroles + '\n')
+    except KeyError:
         pass
     # Si l'utilisateur l'a demandé,
     # écrire une tablature dans un fichier texte.
@@ -216,15 +245,9 @@ def gabctk(commande, arguments, tempo=TEMPO, debug=DEBUG):
             '{0}\t{1}'.format(syllabe, neume.ly) for syllabe, neume in
             zip(partition.syllabes, partition.musique)
         )
-        tab.ecrire(tablature + '\n')
-    except UnboundLocalError:
+        sortie['tab'].ecrire(tablature + '\n')
+    except KeyError:
         pass
-
-
-def sansaccents(input_str):
-    """Renvoie la chaîne d'entrée sans accents"""
-    nkfd_form = ud.normalize('NFKD', input_str)
-    return "".join([c for c in nkfd_form if not ud.combining(c)])
 
 
 def verifier(alertes, texte):
@@ -411,8 +434,6 @@ class Partition(list):
                     minimum = note.hauteur
                 if note.hauteur > maximum:
                     maximum = note.hauteur
-        # ## TODO: voir pourquoi la bidouille abjecte qui suit est  ####
-        # ## nécessaire…                                            ####
         minimum += 1
         if self._transposition:
             minimum += self._transposition
@@ -1142,8 +1163,10 @@ class Midi:
         self.sortiemidi.addTempo(piste, temps, tempo)
         # Instrument (74 : flûte).
         self.sortiemidi.addProgramChange(piste, 0, temps, 74)
-        # À partir des propriétés de la note, création des évènements
-        # MIDI.
+        self.traiter_partition(partition, piste, temps)
+
+    def traiter_partition(self, partition, piste, temps):
+        """Création des évènements MIDI"""
         transposition = partition.transposition
         for neume in partition.musique:
             for note in (
@@ -1173,21 +1196,15 @@ class Midi:
             self.sortiemidi.writeFile(sortie)
 
 
-# # Classes génériques pour faciliter l'écriture de fichiers.
+# # Classe générique pour faciliter l'écriture de fichiers.
 
 
-class Fichier:
-    """Gestion des entrées/sorties fichier"""
+class FichierTexte():
+    """Gestion des fichiers texte"""
     def __init__(self, chemin):
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
         self.chemin = chemin
-
-
-class FichierTexte(Fichier):
-    """Gestion des fichiers texte"""
-    def __init__(self, chemin):
-        Fichier.__init__(self, chemin)
 
     @property
     def contenu(self):
@@ -1214,4 +1231,4 @@ class ErreurSyntaxe(Exception):
 
 
 if __name__ == '__main__':
-    gabctk(os.path.basename(sys.argv[0]), sys.argv[1:])
+    traiter_options(sys.argv[1:])
