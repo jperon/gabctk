@@ -1,6 +1,16 @@
 #! /usr/bin/python3
 # -*- coding: UTF-8 -*-
 
+"""GabcTk
+
+Ce programme vise à servir à toutes sortes de traitements sur les fichiers gabc
+(cf. [Gregorio](https://gregorio-project.github.io)).
+
+Actuellement, il permet de convertir les gabc en midi et en lilypond, et de
+vérifier si certains caractères n'ont pas été saisis dans le texte de la
+partition.
+
+"""
 
 # Variables globales ###################################################
 
@@ -10,6 +20,7 @@ DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
 DEBUG = False
+# pylint:disable=W1401
 LILYPOND_ENTETE = '''\\version "2.18"
 
 \header {
@@ -58,10 +69,6 @@ import getopt
 import re
 from midiutil.MidiFile3 import MIDIFile
 import unicodedata as ud
-try:
-    import jrnl as l
-except ImportError:
-    pass
 
 
 # Méthodes globales ####################################################
@@ -90,15 +97,14 @@ def aide(commande, erreur, code):
     sys.exit(code)
 
 
-def gabctk(commande, arguments):
+def gabctk(commande, arguments, tempo=TEMPO, debug=DEBUG):
     """Fonction maîtresse"""
     # Initialisation des variables correspondant aux paramètres.
-    global TEMPO, DEBUG
-    entree = sortieMidi = sortieLily = titre = transposition = paroles = None
-    alertes = corrections = []
+    entree = sortiemidi = sortielily = titre = transposition = paroles = None
+    alertes = []
     # Analyse des arguments de la ligne de commande.
     try:
-        opts, args = getopt.getopt(
+        opts = getopt.getopt(
             arguments,
             "hi:o:l:e:m:b:t:d:n:a:v",
             [
@@ -115,7 +121,7 @@ def gabctk(commande, arguments):
                 "alerter=",         # Caractères à signaler
                 "verbose"           # Verbosité de la sortie
             ]
-        )
+        )[0]
     except getopt.GetoptError:
         aide(commande, 'Argument invalide', 1)
     for opt, arg in opts:
@@ -124,17 +130,15 @@ def gabctk(commande, arguments):
         elif opt in ("-i", "--entree"):
             entree = FichierTexte(arg)
         elif opt in ("-o", "--midi"):
-            sortieMidi = Fichier(arg)
+            sortiemidi = Fichier(arg)
         elif opt in ("-l", "--lily"):
-            sortieLily = FichierTexte(arg)
+            sortielily = FichierTexte(arg)
         elif opt in ("-e", "--export"):
             texte = FichierTexte(arg)
-        elif opt in ("-m", "--musique"):
-            musique = FichierTexte(arg)
         elif opt in ("-b", "--tab"):
             tab = FichierTexte(arg)
         elif opt in ("-t", "--tempo"):
-            TEMPO = int(arg)
+            tempo = int(arg)
         elif opt in ("-d", "--transposition"):
             transposition = int(arg)
         elif opt in ("-n", "--titre"):
@@ -142,7 +146,7 @@ def gabctk(commande, arguments):
         elif opt in ("-a", "--alerter"):
             alertes.append(arg)
         elif opt in ("-v", "--verbose"):
-            DEBUG = True
+            debug = True
     # Si les arguments n'ont pas été saisis explicitement,
     # considérer le premier comme étant le gabc en entrée ;
     # en l'absence de deuxième, donner à la sortie midi
@@ -150,12 +154,12 @@ def gabctk(commande, arguments):
     try:
         if not entree:
             entree = FichierTexte(arguments[0])
-        if not sortieMidi:
+        if not sortiemidi:
             try:
                 if arguments[1][-4:] == '.mid':
-                    sortieMidi = Fichier(arguments[1])
+                    sortiemidi = Fichier(arguments[1])
             except IndexError:
-                sortieMidi = Fichier(re.sub('.gabc', '.mid', arguments[0]))
+                sortiemidi = Fichier(re.sub('.gabc', '.mid', arguments[0]))
     # S'il n'y a aucun argument, afficher l'aide.
     except IndexError:
         aide(commande, 'aucun argument', 0)
@@ -172,11 +176,10 @@ def gabctk(commande, arguments):
         else gabc.entetes['name'] if 'name' in gabc.entetes \
         else TITRE
     # Créer les objets midi et lilypond.
-    midi = Midi(partition, titre=titre, tempo=TEMPO)
-    lily = Lily(partition, titre=titre, tempo=TEMPO)
-    i = 0
+    midi = Midi(partition, titre=titre, tempo=tempo)
+    lily = Lily(partition, titre=titre, tempo=tempo)
     # Si l'utilisateur a demandé une sortie verbeuse, afficher :
-    if DEBUG:
+    if debug:
         # − les en-têtes gabc ;
         print(gabc.entetes, '\n')
         # − la partition gabc (sans les en-têtes) ;
@@ -186,20 +189,16 @@ def gabctk(commande, arguments):
         print(partition.syllabes)
     # Créer le fichier midi.
     try:
-        midi.ecrire(sortieMidi.chemin)
+        midi.ecrire(sortiemidi.chemin)
     except AttributeError:
         pass
     # Créer le fichier lilypond
     try:
-        lily.ecrire(sortieLily.chemin)
+        lily.ecrire(sortielily.chemin)
     except AttributeError:
         pass
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
-    try:
-        partition.verifier(alertes)
-    except:
-        pass
     # Création d'une variable contenant les paroles.
     paroles = partition.texte
     # S'assurer des alertes définies par l'utilisateur.
@@ -210,14 +209,6 @@ def gabctk(commande, arguments):
         texte.ecrire(paroles + '\n')
     except UnboundLocalError:
         pass
-    try:
-        musique.ecrire(partition.melodie)
-        for parole, melodie in zip(partition.liste_paroles, partition.musique):
-            print(parole, '\t', [
-                signe.ly for signe in melodie
-            ])
-    except UnboundLocalError:
-        pass
     # Si l'utilisateur l'a demandé,
     # écrire une tablature dans un fichier texte.
     try:
@@ -226,7 +217,7 @@ def gabctk(commande, arguments):
             zip(partition.syllabes, partition.musique)
         )
         tab.ecrire(tablature + '\n')
-    except (UnboundLocalError):
+    except UnboundLocalError:
         pass
 
 
@@ -392,6 +383,7 @@ class Partition(list):
 
     @property
     def musique(self):
+        """Liste de signes musicaux"""
         musique = []
         for mot in self:
             musique += mot.musique
@@ -399,6 +391,7 @@ class Partition(list):
 
     @property
     def syllabes(self):
+        """Liste des syllabes des mots de la partition"""
         syllabes = []
         for mot in self:
             syllabes += mot
@@ -428,6 +421,7 @@ class Partition(list):
 
     @property
     def texte(self):
+        """Texte de la partition"""
         return ' '.join(str(mot) for mot in self)
 
     @property
@@ -440,7 +434,7 @@ class Partition(list):
             return 66 - int(sum(self.tessiture.values())/2)
 
 
-class ObjetLie:
+class ObjetLie:  # pylint:disable=R0903
     """Objet lié au précédent
 
     Cette classe est celle dont héritent chacun des types d'éléments. Elle
@@ -449,12 +443,13 @@ class ObjetLie:
 
     """
     def __init__(self, precedent):
+        self._precedent = None
         self.precedent = precedent
 
     def __getattr__(self, attribut):
         try:
             return getattr(self.precedent, attribut)
-        except AttributeError as err:
+        except AttributeError:
             raise
 
     def __setattr__(self, attribut, valeur):
@@ -463,15 +458,17 @@ class ObjetLie:
         except AttributeError:
             try:
                 setattr(self.precedent, attribut, valeur)
-            except AttributeError as err:
+            except AttributeError:
                 raise
 
     @property
     def precedent(self):
+        """Renvoie la référence à l'objet précédent"""
         return self._precedent
 
     @precedent.setter
     def precedent(self, precedent):
+        """Enregistre la référence de l'objet suivant"""
         self._precedent = precedent
         if precedent:
             self.precedent.suivant = self
@@ -486,7 +483,7 @@ class Mot(ObjetLie, list):
     - d'une liste de tuples (syllabe, musique) en langage gabc.
 
     """
-    def __init__(self,  gabc=None, precedent=None, *args, **params):
+    def __init__(self, gabc=None, precedent=None, *args, **params):
         ObjetLie.__init__(self, precedent=precedent)
         list.__init__(self, *args, **params)
         if gabc:
@@ -501,6 +498,7 @@ class Mot(ObjetLie, list):
 
     @property
     def musique(self):
+        """Liste des signes musicaux du mot"""
         return [syllabe.musique for syllabe in self]
 
 
@@ -528,7 +526,8 @@ class Syllabe():
         return self.texte
 
     @property
-    def ly(self):
+    def ly(self):  # pylint:disable=C0103
+        """Texte de la syllabe adapté pour lilypond"""
         texte_ly = self.texte
         special = re.compile(re.escape('<v>') + '.*' + re.escape('</v>'))
         if special.search(texte_ly):
@@ -568,6 +567,7 @@ class Syllabe():
 
     @property
     def musique(self):
+        """Liste des notes associées à la syllabe"""
         return self.neume
 
 
@@ -581,6 +581,7 @@ class Neume(list):
 
     @property
     def gabc(self):
+        """Code gabc du neume"""
         return(
             ''.join((signe.gabc for signe in self))
             if len(self)
@@ -588,14 +589,12 @@ class Neume(list):
         )
 
     @property
-    def signes(self):
-        return self
-
-    @property
-    def ly(self):
+    def ly(self):  # pylint:disable=C0103
+        """Expression lilypond du neume"""
         return ''.join(signe.ly for signe in self)
 
     def traiter_gabc(self, gabc):
+        """Extraction des signes à partir du code gabc"""
         # Expression correspondant aux clés.
         cle = re.compile('[cf][b]?[1234]')
         # Ce dictionnaire renvoie l'objet correspondant à chaque signe.
@@ -610,25 +609,24 @@ class Neume(list):
             Fin:            re.compile("z"),
             Cesure:         re.compile("!"),
         }
-        if cle.search(gabc):
-            if cle.fullmatch(gabc):
-                # Traitement d'une clef toute simple (initiale)
-                self.append(Clef(
-                    gabc=gabc,
-                    neume=self,
-                ))
-            else:
-                # Traitement des changements de clef
-                clef = cle.findall(gabc)[0]
-                autres = cle.split(gabc)
-                for sgn in autres[0]:
-                    self.traiter_gabc(sgn)
-                self.append(Clef(
-                    gabc=clef,
-                    neume=self,
-                ))
-                for sgn in autres[1]:
-                    self.traiter_gabc(sgn)
+        if cle.search(gabc) and cle.fullmatch(gabc):
+            # Traitement d'une clef toute simple (initiale)
+            self.append(Clef(
+                gabc=gabc,
+                neume=self,
+            ))
+        elif cle.search(gabc):
+            # Traitement des changements de clef
+            clef = cle.findall(gabc)[0]
+            autres = cle.split(gabc)
+            for sgn in autres[0]:
+                self.traiter_gabc(sgn)
+            self.append(Clef(
+                gabc=clef,
+                neume=self,
+            ))
+            for sgn in autres[1]:
+                self.traiter_gabc(sgn)
         else:
             for signe in gabc:
                 for typesigne, regex in signes.items():
@@ -666,10 +664,21 @@ class Signe(ObjetLie):
         self.gabc = gabc
         self.neume = neume
         self.suivant = suivant
+        self._ly = ''
 
     @property
-    def ly(self):
-        return ''
+    def ly(self):  # pylint:disable=C0103
+        """Code lilypond par défaut
+
+        Cette méthode permet d'éviter qu'un signe n'ayant pas d'expression en
+        ly renvoie l'expression de la note précédente.
+        """
+        return self._ly
+
+    @ly.setter
+    def ly(self, valeur):  # pylint:disable=C0103
+        """'Setter' pour l'expression ly"""
+        self._ly = valeur
 
     def __repr__(self):
         return str(type(self).__name__) + ' : ' + self.gabc
@@ -690,14 +699,18 @@ class Alteration(Signe):
 
     @property
     def bemol(self):
+        """Liste des bémols
+
+        Sous forme d'une chaîne de caractères.
+        """
         try:
             bemol = self.precedent.bemol
         except AttributeError:
             bemol = ''
         if self.gabc[1] == 'x':
-            return (bemol + self.gabc[0])
+            return bemol + self.gabc[0]
         elif self.gabc == 'y':
-            return (bemol.replace(self.gabc[0], ''))
+            return bemol.replace(self.gabc[0], '')
 
 
 class Barre(Signe):
@@ -726,6 +739,7 @@ class Barre(Signe):
         pass
 
     def poser_note_precedente(self):
+        """Augmente la durée de la note précédente"""
         pose = {
             "`": 0,
             ",": 0,
@@ -819,7 +833,10 @@ class Note(Signe):
             gabc=gabc,
             **params
         )
-        self.hauteur, self.duree = self.g2mid()
+        self.hauteur = self.g2mid()
+        # Par défaut, la durée est à 1 : elle pourra être modifiée par
+        # la suite, s'il se rencontre un épisème, un point, etc.
+        self.duree = 1
         self._ly = self.g2ly()
         self._nuances = []
         if self.neume.element_ferme:
@@ -829,6 +846,7 @@ class Note(Signe):
             self.premier_element = False
 
     def duree_egaliser(self):
+        """Rend la durée de la note au moins égale à celle de la précédente"""
         try:
             if self.duree < self.precedent.duree:
                 self.duree = self.precedent.duree
@@ -836,6 +854,7 @@ class Note(Signe):
             pass
 
     def appliquer(self, nuance):
+        """Prise en compte des divers signes rythmiques"""
         if nuance not in self._nuances:
             self._nuances.append(nuance)
             if nuance == 'episeme':
@@ -866,6 +885,7 @@ class Note(Signe):
 
     @property
     def ly(self):
+        # pylint:disable=C0103
         ly = ' ' + self._ly
         if 'point' in self._nuances:
             ly = ly.replace('8', '4')
@@ -879,15 +899,19 @@ class Note(Signe):
             ly = ' \\tiny{} \\normalsize'.format(ly)
         return ly
 
-    @ly.setter
-    def ly(self, valeur):
-        self._ly = valeur
-
     def ouvrir_element(self):
+        """Indique à la note qu'elle ouvre un élément neumatique
+
+        Ceci est surtout nécessaire pour lilypond
+        """
         self.neume.element_ferme = False
         self._ly += '['
 
     def fermer_element(self):
+        """Indique à la note qu'elle clôt un élément neumatique
+
+        Ceci est surtout nécessaire pour lilypond
+        """
         if 'point' in self._nuances:
             self._ly = self._ly.replace('[', '')
         else:
@@ -895,9 +919,17 @@ class Note(Signe):
         self.neume.element_ferme = True
 
     def ouvrir_neume(self):
+        """Indique à la note qu'elle ouvre un neume
+
+        Ceci est surtout nécessaire pour lilypond
+        """
         self._ly += '('
 
     def fermer_neume(self):
+        """Indique à la note qu'elle clôt un neume
+
+        Ceci est surtout nécessaire pour lilypond
+        """
         self.duree_egaliser()
         self._ly = (self._ly + ')').replace('()', '')
         self.fermer_element()
@@ -905,8 +937,8 @@ class Note(Signe):
     @property
     def note(self):
         """Renvoi du nom "canonique" de la note"""
-        o = int(self.hauteur / 12) - 2
-        n = int(self.hauteur % 12)
+        octve = int(self.hauteur / 12) - 2
+        nte = int(self.hauteur % 12)
         return ('Do',
                 'Do#',
                 'Ré',
@@ -918,12 +950,12 @@ class Note(Signe):
                 'Sol#',
                 'La',
                 'Sib',
-                'Si')[n] + str(o)
+                'Si')[nte] + str(octve)
 
     def g2ly(self):
         """Renvoi du code lilypond correspondant à la note"""
-        o = int(self.hauteur / 12) - 1
-        n = int(self.hauteur % 12)
+        octve = int(self.hauteur / 12) - 1
+        nte = int(self.hauteur % 12)
         # Nom de la note
         note = ('c',
                 'cis',
@@ -936,7 +968,7 @@ class Note(Signe):
                 'gis',
                 'a',
                 'bes',
-                'b')[n]
+                'b')[nte]
         # Hauteur de la note :
         # on prévoit de la1 à sol7, ce qui est plutôt large !
         note += (", , ",
@@ -945,7 +977,7 @@ class Note(Signe):
                  "'",
                  "''",
                  "'''",
-                 "''''")[o-1]
+                 "''''")[octve-1]
         # Durée de la note : croche par défaut, pourra être précisée
         # par la suite.
         note += '8'
@@ -956,15 +988,19 @@ class Note(Signe):
         if not gabc:
             gabc = self.gabc
         # Définition de la gamme.
-        la = 57                 # Le nombre correspond au "pitch" MIDI.
-        si = la + 2
-        do = la + 3
-        re = do + 2
-        mi = re + 2
-        fa = mi + 1
-        sol = fa + 2
-        gammehauteurs = (la, si, do, re, mi, fa, sol)
-        gammenotes = ('la', 'si', 'do', 're', 'mi', 'fa', 'sol')
+        h_la = 57  # Le nombre correspond au "pitch" MIDI.
+        gamme = {
+            'notes': ('la', 'si', 'do', 're', 'mi', 'fa', 'sol'),
+            'hauteurs': (
+                h_la,
+                h_la + 2,
+                h_la + 3,
+                h_la + 5,
+                h_la + 7,
+                h_la + 8,
+                h_la + 10
+            ),
+        }
         gabcnotes = "abcdefghijklm"
         # Analyse de la clé : les lettres du gabc définissant une
         # position sur la portée et non une hauteur de note, la note
@@ -974,12 +1010,12 @@ class Note(Signe):
         cle = self.neume.syllabe.mot.cle.gabc
         try:
             bmol = self.bemol
-        except AttributeError as err:
+        except AttributeError:
             bmol = ''
         # Traitement des bémols à la clé.
         if len(cle) == 3:
             cle = cle[0] + cle[2]
-            bemol = {
+            bmol += {
                 "c4": 'bi',
                 "c3": 'g',
                 "c2": 'el',
@@ -988,8 +1024,7 @@ class Note(Signe):
                 "f3": 'dk',
                 "f2": 'bi',
                 "f1": 'g'
-                }
-            bmol += bemol[cle]
+            }[cle]
         decalage = {
             "c4": 0,
             "c3": 2,
@@ -999,26 +1034,18 @@ class Note(Signe):
             "f3": 5,
             "f2": 0,
             "f1": 2
-            }
+        }
         i = decalage[cle] - 1
-        o = 0
-        if cle == 'f3':
-            o = -12
+        octve = -12 if cle == 'f3' else 0
         hauteurs = {}
         notes = {}
         for j in gabcnotes:
-            try:
-                i += 1
-                hauteurs[j] = gammehauteurs[i] + o
-                notes[j] = gammenotes[i]
-            except IndexError:
-                i -= 7
-                o += 12
-                hauteurs[j] = gammehauteurs[i] + o
-                notes[j] = gammenotes[i]
-        # Par défaut, la durée est à 1 : elle pourra être modifiée par
-        # la suite, s'il se rencontre un épisème, un point, etc.
-        duree = 1
+            i += 1
+            if i == 7:
+                i %= 7
+                octve += 12
+            notes[j] = gamme['notes'][i]
+            hauteurs[j] = gamme['hauteurs'][i] + octve
         lettre = gabc.lower()[0]
         hauteur = hauteurs[lettre]
         # Si la note est altérée par un bémol, l'abaisser d'un demi-ton.
@@ -1033,7 +1060,7 @@ class Note(Signe):
                 hauteur -= 1
         except AttributeError:
             pass
-        return hauteur, duree
+        return hauteur
 
 
 class NoteSpeciale(Note):
@@ -1074,8 +1101,11 @@ class Lily:
         self.tonalite = partition.tonalite[0]
         self.texte, self.musique = self.traiter_partition(partition)
         self.titre = titre
+        self.tempo = tempo
 
-    def traiter_partition(self, partition):
+    @classmethod
+    def traiter_partition(cls, partition):
+        """Extraction du texte et des paroles depuis l'objet partition"""
         texte = ''
         musique = ''
         for mot in partition:
@@ -1096,8 +1126,7 @@ class Lily:
             'musique': self.musique,
             'transposition': self.transposition,
             'paroles': self.texte
-            }
-        )
+        })
 
 
 class Midi:
@@ -1106,13 +1135,13 @@ class Midi:
         # Définition des paramètres MIDI.
         piste = 0
         temps = 0
-        self.sortieMidi = MIDIFile(1)
+        self.sortiemidi = MIDIFile(1)
         # Nom de la piste.
-        self.sortieMidi.addTrackName(piste, temps, sansaccents(titre))
+        self.sortiemidi.addTrackName(piste, temps, sansaccents(titre))
         # Tempo.
-        self.sortieMidi.addTempo(piste, temps, tempo)
+        self.sortiemidi.addTempo(piste, temps, tempo)
         # Instrument (74 : flûte).
-        self.sortieMidi.addProgramChange(piste, 0, temps, 74)
+        self.sortiemidi.addProgramChange(piste, 0, temps, 74)
         # À partir des propriétés de la note, création des évènements
         # MIDI.
         transposition = partition.transposition
@@ -1124,7 +1153,7 @@ class Midi:
                 pitch = note.hauteur + transposition
                 duree = note.duree
                 volume = 127
-                self.sortieMidi.addNote(
+                self.sortiemidi.addNote(
                     piste,
                     channel,
                     pitch,
@@ -1136,12 +1165,12 @@ class Midi:
 
     def ecrire(self, chemin):
         """Écriture effective du fichier MIDI"""
-        if chemin == '-':
-            with open(sys.stdout.fileno(), 'wb') as sortie:
-                self.sortieMidi.writeFile(sortie)
-        else:
-            with open(chemin, 'wb') as sortie:
-                self.sortieMidi.writeFile(sortie)
+        with (
+            open(sys.stdout.fileno(), 'wb')
+            if chemin == '-'
+            else open(chemin, 'wb')
+        )as sortie:
+            self.sortiemidi.writeFile(sortie)
 
 
 # # Classes génériques pour faciliter l'écriture de fichiers.
@@ -1173,7 +1202,7 @@ class FichierTexte(Fichier):
     def ecrire(self, contenu):
         """Écriture dans le fichier"""
         if self.chemin == '-':
-            texte = sys.stdout.write(contenu)
+            sys.stdout.write(contenu)
         else:
             with open(self.chemin, 'w') as fichier:
                 fichier.write(contenu)
