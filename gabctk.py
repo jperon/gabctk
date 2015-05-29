@@ -35,10 +35,10 @@ LILYPOND_ENTETE = '''\\version "2.18"
 
 MusiqueTheme = {
  \\key %(tonalite)s\\major
- %(musique)s}
+%(musique)s}
 
 Paroles = \\lyricmode {
- %(paroles)s
+%(paroles)s
 }
 
 \\score{
@@ -212,20 +212,15 @@ def gabctk(
         titre if titre \
         else gabc.entetes['name'] if 'name' in gabc.entetes \
         else TITRE
-    # Créer les objets midi et lilypond.
-    midi = Midi(partition, titre=titre, tempo=tempo)
-    lily = Lily(partition, titre=titre, tempo=tempo)
     sortie_verbeuse(debug, gabc, partition)
     # Créer le fichier midi.
-    try:
+    if 'midi' in sortie:
+        midi = Midi(partition, titre=titre, tempo=tempo)
         midi.ecrire(sortie['midi'])
-    except KeyError:
-        pass
     # Créer le fichier lilypond
-    try:
+    if 'lily' in sortie:
+        lily = Lily(partition, titre=titre, tempo=tempo)
         lily.ecrire(sortie['lily'].chemin)
-    except KeyError:
-        pass
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
     # Création d'une variable contenant les paroles.
@@ -234,20 +229,19 @@ def gabctk(
     verifier(alertes, paroles)
     # Si l'utilisateur l'a demandé,
     # écrire les paroles dans un fichier texte.
-    try:
+    if 'texte' in sortie:
         sortie['texte'].ecrire(paroles + '\n')
-    except KeyError:
-        pass
     # Si l'utilisateur l'a demandé,
     # écrire une tablature dans un fichier texte.
-    try:
-        tablature = '\n'.join(
-            '{0}\t{1}'.format(syllabe, neume.ly) for syllabe, neume in
-            zip(partition.syllabes, partition.musique)
+    if 'tab' in sortie:
+        tablature = re.sub(
+            '^\s+', '',
+            '\n'.join(
+                '{0}\t{1}'.format(syllabe, neume.ly) for syllabe, neume in
+                zip(partition.syllabes, partition.musique)
+            ).replace('\n ', '\n//\n')
         )
         sortie['tab'].ecrire(tablature + '\n')
-    except KeyError:
-        pass
 
 
 def verifier(alertes, texte):
@@ -427,14 +421,11 @@ class Partition(list):
         # Parcours de toutes les notes de la mélodie, pour déterminer
         # la plus haute et la plus basse.
         for neume in self.musique:
-            for note in (notes
-                         for notes in neume
-                         if type(notes) == Note):
+            for note in (notes for notes in neume if type(notes) == Note):
                 if minimum == 0 or note.hauteur < minimum:
                     minimum = note.hauteur
                 if note.hauteur > maximum:
                     maximum = note.hauteur
-        minimum += 1
         if self._transposition:
             minimum += self._transposition
             maximum += self._transposition
@@ -509,7 +500,16 @@ class Mot(ObjetLie, list):
         list.__init__(self, *args, **params)
         if gabc:
             for syl in gabc:
-                self.append(Syllabe(gabc=syl, mot=self))
+                self.append(Syllabe(
+                    gabc=syl,
+                    mot=self,
+                    precedent=(
+                        self[-1] if len(self)
+                        else self.precedent.dernieresyllabe if self.precedent
+                        else None
+                    )
+                ))
+            self.dernieresyllabe = self[-1]
 
     def __repr__(self):
         return str(self)
@@ -523,22 +523,33 @@ class Mot(ObjetLie, list):
         return [syllabe.musique for syllabe in self]
 
 
-class Syllabe():
+class Syllabe(ObjetLie):
     """Ensemble de lettres, auquel est associé un neume
 
     Cet objet peut être défini à partir d'un tuple (syllabe, musique)
     en langage gabc.
 
     """
-    def __init__(self, gabc, mot=None):
+    def __init__(self, gabc, mot=None, precedent=None):
+        ObjetLie.__init__(self, precedent=precedent)
+        self.mot = mot
         self.texte = gabc[0]
+        self.neume = Neume(gabc=gabc[1], syllabe=self)
+        # Lilypond ne peut pas associer une syllabe à un "neume" sans note.
+        # Il est donc nécessaire de traiter à part le texte pour lui.
+        if (
+                self.precedent and self.precedent.ly_texte != ''
+                and not self.precedent.neume.possede_note
+        ):
+            self.ly_texte = self.precedent.ly_texte + ' ' + self.texte
+            self.precedent.ly_texte = ''
+        else:
+            self.ly_texte = self.texte
         try:
-            if self.texte[0] == ' ':
-                self.texte = self.texte[1:]
+            while self.ly_texte[0] == ' ':
+                self.ly_texte = self.ly_texte[1:]
         except IndexError:
             pass
-        self.mot = mot
-        self.neume = Neume(gabc=gabc[1], syllabe=self)
 
     def __repr__(self):
         return str((self.texte, str(self.neume)))
@@ -549,23 +560,21 @@ class Syllabe():
     @property
     def ly(self):  # pylint:disable=C0103
         """Texte de la syllabe adapté pour lilypond"""
-        texte_ly = self.texte
+        ly_texte = self.ly_texte
         special = re.compile(re.escape('<v>') + '.*' + re.escape('</v>'))
-        if special.search(texte_ly):
-            texte_ly = special.sub('', texte_ly)
+        if special.search(ly_texte):
+            ly_texte = special.sub('', ly_texte)
         if (
-                not len(texte_ly)
+                not len(ly_texte)
                 and not (
                     len(self.neume) == 1
                     and isinstance(self.neume[0], Clef)
                 )
         ):
-            texte_ly = ''
-        prefixe = \
-            '' if not len(texte_ly) or isinstance(self.neume[-1], Clef) \
-            else '_' if isinstance(self.neume[-1], Barre) \
-            else ' '
-        return prefixe + texte_ly\
+            ly_texte = ''
+        ly_texte = ly_texte.replace(' ', '_')
+        ly_texte = re.sub('([0-9]+\.?)', '\\set stanza = "\\1"', ly_texte)
+        return ly_texte\
             .replace('*', '&zwj;*')\
             .replace('<i>', '').replace('</i>', '')\
             .replace('<b>', '').replace('</b>', '')\
@@ -583,8 +592,7 @@ class Syllabe():
             .replace("<sp>'œ</sp>", 'œ́')\
             .replace('<sp>OE</sp>', 'Œ')\
             .replace("<sp>'OE</sp>", 'Œ́')\
-            .replace("<sp>'Œ</sp>", 'Œ́')\
-            .replace(" ", "_")
+            .replace("<sp>'Œ</sp>", 'Œ́')
 
     @property
     def musique(self):
@@ -598,6 +606,7 @@ class Neume(list):
         list.__init__(self, *args, **params)
         self.syllabe = syllabe
         self.element_ferme = True
+        self.possede_note = False
         self.traiter_gabc(gabc)
 
     @property
@@ -860,6 +869,7 @@ class Note(Signe):
         self.duree = 1
         self._ly = self.g2ly()
         self._nuances = []
+        self.neume.possede_note = True
         if self.neume.element_ferme:
             self.ouvrir_element()
             self.premier_element = True
@@ -1030,7 +1040,7 @@ class Note(Signe):
         # nous regarde pas !
         cle = self.neume.syllabe.mot.cle.gabc
         try:
-            bmol = self.bemol
+            bmol = self.bemol if self.bemol else ''
         except AttributeError:
             bmol = ''
         # Traitement des bémols à la clé.
@@ -1129,13 +1139,18 @@ class Lily:
         """Extraction du texte et des paroles depuis l'objet partition"""
         texte = ''
         musique = ''
+        i = 0
         for mot in partition:
             parole = ' -- '.join(syllabe.ly for syllabe in mot)
             notes = ''.join(neume.ly for neume in mot.musique)
-            if texte[-9:] == '\n_&zwj;*\n' and len(parole):
-                texte = texte[:-9] + '_&zwj;*\n'
-            texte += parole + '\n'
-            musique += notes + '\n'
+            if len(parole) or len(notes):
+                i += 1
+                texte += (
+                    '%{}'.format(i) +
+                    ('\n' + parole if len(parole) else '')
+                    + '\n'
+                )
+                musique += '%{}\n'.format(i) + notes + '\n'
         return texte, musique
 
     def ecrire(self, chemin):
