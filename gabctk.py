@@ -231,6 +231,8 @@ def gabctk(
     # écrire les paroles dans un fichier texte.
     if 'texte' in sortie:
         sortie['texte'].ecrire(paroles + '\n')
+    if 'gabc' in sortie:
+        sortie['gabc'].ecrire(partition.gabc)
     # Si l'utilisateur l'a demandé,
     # écrire une tablature dans un fichier texte.
     if 'tab' in sortie:
@@ -397,6 +399,14 @@ class Partition(list):
         self.titre = titre
         self.tonalite = ['c', 'M']
         self._transposition = transposition
+
+    @property
+    def gabc(self):
+        """Code gabc de la musique"""
+        return re.sub(
+            '(::|:|;)', '\\1\n',
+            ' '.join(signe.gabc for signe in self.musique)
+        )
 
     @property
     def musique(self):
