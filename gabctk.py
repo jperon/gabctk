@@ -236,7 +236,7 @@ def gabctk(
     if 'tab' in sortie:
         tablature = re.sub(
             '^\s+', '',
-                '\n'.join(
+            '\n'.join(
                 '{0}\t{1}'.format(syllabe, neume.ly) for syllabe, neume in
                 zip(partition.syllabes, partition.musique)
             ).replace('\n ', '\n//\n')
