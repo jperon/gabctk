@@ -47,17 +47,21 @@ Paroles = \\lyricmode {
       \\set Staff.midiInstrument = "flute"
       \\set Staff.autoBeaming = ##f
       \\new Voice = "theme" {
-        \\override Score.Slur #'stencil = ##f
         \\cadenzaOn \\transpose c %(transposition)s{\\MusiqueTheme}
-        \\revert Score.Slur #'stencil
       }
     >>
     \\new Lyrics \\lyricsto theme {
       \\Paroles
     }
   >>
-  \layout{}
-  \midi{}
+  \\layout{
+    \\context {
+      \\Staff
+      \\override TimeSignature #'stencil = #point-stencil
+      \\override Slur #'stencil = ##f
+    }
+  }
+  \\midi{}
 }'''
 
 
@@ -172,7 +176,11 @@ def traiter_options(arguments):  # pylint:disable=R0912
 def sansaccents(input_str):
     """Renvoie la chaîne d'entrée sans accents"""
     nkfd_form = ud.normalize('NFKD', input_str)
-    return "".join([c for c in nkfd_form if not ud.combining(c)])
+    return "".join([c for c in nkfd_form if not ud.combining(c)]).replace(
+        '℣', 'V'
+    ).replace(
+        '℟', 'R'
+    )
 
 
 def sortie_verbeuse(debug, gabc, partition):
@@ -277,7 +285,10 @@ class Gabc:
     def entetes(self):
         """En-têtes du gabc, sous forme d'un dictionnaire"""
         resultat = {
-            info[0]: ':'.join(info[1:]).replace(';', '').replace('\r', '')
+            info[0]: re.sub(
+                '^ +| +$', '',
+                ':'.join(info[1:]).replace(';', '').replace('\r', '')
+            )
             for info in [
                 ligne.split(':')
                 for ligne in self.parties[0].split('\n')
@@ -829,13 +840,18 @@ class Custo(Signe):
     """
     def __init__(self, gabc, **params):
         Signe.__init__(self, gabc, **params)
+        self.precedent = self.precedent.precedent
+        self.neume.pop()
 
 
 class Coupure(Signe):
     """Coupures neumatiques"""
     def __init__(self, gabc, **params):
         Signe.__init__(self, gabc, **params)
-        self.precedent.duree_egaliser()
+        try:
+            self.precedent.duree_egaliser()
+        except AttributeError:
+            pass
         try:
             self.precedent.fermer_element()
         except AttributeError:
@@ -1051,8 +1067,8 @@ class Note(Signe):
         # nous regarde pas !
         cle = self.neume.syllabe.mot.cle.gabc
         alterations = {
-                chr(lettre):0 for lettre in range(ord('a'), ord('p') + 1)
-            }
+            chr(lettre):0 for lettre in range(ord('a'), ord('p') + 1)
+        }
         try:
             alterations = self.alterations if self.alterations else alterations
         except AttributeError:
