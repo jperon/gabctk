@@ -83,8 +83,8 @@ def aide(erreur, code, commande=os.path.basename(sys.argv[0])):
     # Tenir compte du message propre à chaque erreur, ainsi que du nom
     # sous lequel la commande a été appelée.
     sys.stderr.write(
-        ('Erreur : ' + erreur + '\n' if erreur != '' else '')
-        + 'Usage : \n    '
+        ('Erreur : ' + erreur + '\n' if erreur != '' else '')
+        + 'Usage : \n    '
         + commande + ' '
         + '-i <input.gabc>\n          '
         + '[-o <output.mid>]\n          '
@@ -126,7 +126,7 @@ def traiter_options(arguments):  # pylint:disable=R0912
             ]
         )[0]
     except getopt.GetoptError as err:
-        aide('Argument invalide : ' + err.args[1], 1)
+        aide('Argument invalide : ' + err.args[1], 1)
     for opt, arg in opts:
         if opt == '-h':
             aide('', 0)
@@ -153,7 +153,7 @@ def traiter_options(arguments):  # pylint:disable=R0912
         elif opt in ("-v", "--verbose"):
             options['debug'] = True
     # Si les arguments n'ont pas été saisis explicitement,
-    # considérer le premier comme étant le gabc en entrée ;
+    # considérer le premier comme étant le gabc en entrée ;
     # en l'absence de deuxième, donner à la sortie midi
     # le même nom, en changeant l'extension.
     try:
@@ -186,8 +186,8 @@ def sansaccents(input_str):
 def sortie_verbeuse(debug, gabc, partition):
     """Affichage d'informations de débogage
 
-    − les en-têtes gabc ;
-    − la partition gabc (sans les en-têtes) ;
+    − les en-têtes gabc ;
+    − la partition gabc (sans les en-têtes) ;
     − la partition (texte et ensemble syllabes/neumes).
     """
     if debug:
@@ -512,7 +512,7 @@ class Mot(ObjetLie, list):
 
     Cet objet peut être défini à partir:
 
-    - d'une liste d'objets Syllabe ;
+    - d'une liste d'objets Syllabe ;
     - d'une liste de tuples (syllabe, musique) en langage gabc.
 
     """
@@ -891,7 +891,7 @@ class Note(Signe):
             **params
         )
         self.hauteur = self.g2mid()
-        # Par défaut, la durée est à 1 : elle pourra être modifiée par
+        # Par défaut, la durée est à 1 : elle pourra être modifiée par
         # la suite, s'il se rencontre un épisème, un point, etc.
         self.duree = 1
         self._ly = self.g2ly()
@@ -1027,8 +1027,8 @@ class Note(Signe):
                 'a',
                 'bes',
                 'b')[nte]
-        # Hauteur de la note :
-        # on prévoit de la1 à sol7, ce qui est plutôt large !
+        # Hauteur de la note :
+        # on prévoit de la1 à sol7, ce qui est plutôt large !
         note += (", , ",
                  ", ",
                  "",
@@ -1036,7 +1036,7 @@ class Note(Signe):
                  "''",
                  "'''",
                  "''''")[octve-1]
-        # Durée de la note : croche par défaut, pourra être précisée
+        # Durée de la note : croche par défaut, pourra être précisée
         # par la suite.
         note += '8'
         return note
@@ -1060,11 +1060,11 @@ class Note(Signe):
             ),
         }
         gabcnotes = "abcdefghijklm"
-        # Analyse de la clé : les lettres du gabc définissant une
+        # Analyse de la clé : les lettres du gabc définissant une
         # position sur la portée et non une hauteur de note, la note
         # correspondant à une lettre dépend de la clé.
-        # N.B : c1, f1 et f2 n'existent pas normalement, mais cela ne
-        # nous regarde pas !
+        # N.B : c1, f1 et f2 n'existent pas normalement, mais cela ne
+        # nous regarde pas !
         cle = self.neume.syllabe.mot.cle.gabc
         alterations = {
             chr(lettre):0 for lettre in range(ord('a'), ord('p') + 1)
@@ -1111,7 +1111,7 @@ class Note(Signe):
         hauteur = hauteurs[lettre]
         hauteur += alterations[lettre]
         # Si la note est altérée par un bémol, l'abaisser d'un demi-ton.
-        # N.B : le grégorien n'admet que le si bémol, mais il n'y avait
+        # N.B : le grégorien n'admet que le si bémol, mais il n'y avait
         # pas de raison de se limiter à ce dernier. Cependant, on
         # renvoie un avertissement si un autre bémol est rencontré, car
         # il peut s'agir d'une erreur.
@@ -1202,7 +1202,7 @@ class Midi:
         self.sortiemidi.addTrackName(piste, temps, sansaccents(titre))
         # Tempo.
         self.sortiemidi.addTempo(piste, temps, tempo)
-        # Instrument (74 : flûte).
+        # Instrument (74 : flûte).
         self.sortiemidi.addProgramChange(piste, 0, temps, 74)
         self.traiter_partition(partition, piste, temps)
 
