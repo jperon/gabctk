@@ -178,8 +178,11 @@ def sansaccents(input_str):
     nkfd_form = ud.normalize('NFKD', input_str)
     return "".join([c for c in nkfd_form if not ud.combining(c)]).replace(
         '℣', 'V'
-    ).replace(
-        '℟', 'R'
+    ).replace('℟', 'R'
+    ).replace('æ', 'ae'
+    ).replace('œ', 'oe'
+    ).replace('ǽ', 'ae'
+    ).replace('œ́', 'oe'
     )
 
 
