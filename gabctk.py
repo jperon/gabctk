@@ -170,7 +170,7 @@ def traiter_options(arguments):  # pylint:disable=R0912
     except IndexError:
         aide('aucun argument', 0)
     # Envoi de l'entrée vers la méthode de traitement
-    gabctk(**options)  # pylint:disable=W0142
+    gabctk(**options)
 
 
 def sansaccents(input_str):
@@ -178,12 +178,12 @@ def sansaccents(input_str):
     nkfd_form = ud.normalize('NFKD', input_str)
     return "".join([c for c in nkfd_form if not ud.combining(c)]).replace(
         '℣', 'V'
-    ).replace('℟', 'R'
-    ).replace('æ', 'ae'
-    ).replace('œ', 'oe'
-    ).replace('ǽ', 'ae'
-    ).replace('œ́', 'oe'
-    )
+    )\
+    .replace('℟', 'R')\
+    .replace('æ', 'ae')\
+    .replace('œ', 'oe')\
+    .replace('ǽ', 'ae')\
+    .replace('œ́', 'oe')
 
 
 def sortie_verbeuse(debug, gabc, partition):
@@ -445,7 +445,7 @@ class Partition(list):
         # Parcours de toutes les notes de la mélodie, pour déterminer
         # la plus haute et la plus basse.
         for neume in self.musique:
-            for note in (notes for notes in neume if type(notes) == Note):
+            for note in (notes for notes in neume if isinstance(notes, Note)):
                 if minimum == 0 or note.hauteur < minimum:
                     minimum = note.hauteur
                 if note.hauteur > maximum:
@@ -558,7 +558,18 @@ class Syllabe(ObjetLie):
         ObjetLie.__init__(self, precedent=precedent)
         self.mot = mot
         self.texte = gabc[0]
-        self.neume = Neume(gabc=gabc[1], syllabe=self)
+        if len(mot):
+            try:
+                alterations = precedent.musique[-1].alterations
+            except AttributeError:
+                alterations = None
+        else:
+            alterations = None
+        self.neume = Neume(
+            gabc=gabc[1],
+            syllabe=self,
+            alterations=alterations
+        )
         # Lilypond ne peut pas associer une syllabe à un "neume" sans note.
         # Il est donc nécessaire de traiter à part le texte pour lui.
         if (
@@ -626,11 +637,14 @@ class Syllabe(ObjetLie):
 
 class Neume(list):
     """Ensemble de signes musicaux"""
-    def __init__(self, gabc=None, syllabe=None, *args, **params):
+    def __init__(
+            self, gabc=None, syllabe=None, alterations=None, *args, **params
+    ):
         list.__init__(self, *args, **params)
         self.syllabe = syllabe
         self.element_ferme = True
         self.possede_note = False
+        self.alterations = alterations
         self.traiter_gabc(gabc)
 
     @property
@@ -685,11 +699,16 @@ class Neume(list):
             for signe in gabc:
                 for typesigne, regex in signes.items():
                     if regex.fullmatch(signe):
+                        try:
+                            alterations = self.alterations
+                        except AttributeError:
+                            alterations = None
                         self.append(typesigne(
                             gabc=signe,
                             neume=self,
                             precedent=self[-1] if len(self)
                             else None,
+                            alterations=alterations
                         ))
         for signe in self:
             if isinstance(signe, Note):
@@ -713,11 +732,14 @@ class Signe(ObjetLie):
             neume=None,
             precedent=None,
             suivant=None,
+            alterations=None
     ):
         ObjetLie.__init__(self, precedent=precedent)
         self.gabc = gabc
         self.neume = neume
         self.suivant = suivant
+        if alterations:
+            self.alterations = alterations
         self._ly = ''
 
     @property
