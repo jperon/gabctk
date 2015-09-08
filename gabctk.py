@@ -463,7 +463,7 @@ class Partition(list):
     @property
     def transposition(self):
         """Transposition automatique de la partition si besoin"""
-        if self._transposition:
+        if self._transposition is not None:
             return self._transposition
         else:
             # Calcul de la hauteur idéale.
