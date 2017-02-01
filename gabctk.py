@@ -71,7 +71,7 @@ import os
 import sys
 import getopt
 import re
-from midiutil.MidiFile3 import MIDIFile
+from midiutil.MidiFile import MIDIFile
 import unicodedata as ud
 
 
@@ -1092,7 +1092,7 @@ class Note(Signe):
         # nous regarde pas !
         cle = self.neume.syllabe.mot.cle.gabc
         alterations = {
-            chr(lettre):0 for lettre in range(ord('a'), ord('p') + 1)
+            chr(lettre): 0 for lettre in range(ord('a'), ord('p') + 1)
         }
         try:
             alterations = self.alterations if self.alterations else alterations
@@ -1222,11 +1222,12 @@ class Midi:
         # Définition des paramètres MIDI.
         piste = 0
         temps = 0
-        self.sortiemidi = MIDIFile(1)
+        self.tempo = int(tempo/2)
+        self.sortiemidi = MIDIFile(1, file_format=1)
         # Nom de la piste.
         self.sortiemidi.addTrackName(piste, temps, sansaccents(titre))
         # Tempo.
-        self.sortiemidi.addTempo(piste, temps, tempo)
+        self.sortiemidi.addTempo(piste, temps, self.tempo)
         # Instrument (74 : flûte).
         self.sortiemidi.addProgramChange(piste, 0, temps, 74)
         self.traiter_partition(partition, piste, temps)
@@ -1234,23 +1235,37 @@ class Midi:
     def traiter_partition(self, partition, piste, temps):
         """Création des évènements MIDI"""
         transposition = partition.transposition
-        for neume in partition.musique:
-            for note in (
-                    notes for notes in neume if isinstance(notes, Note)
-            ):
-                channel = 0
-                pitch = note.hauteur + transposition
-                duree = note.duree
-                volume = 127
-                self.sortiemidi.addNote(
-                    piste,
-                    channel,
-                    pitch,
-                    temps,
-                    duree,
-                    volume
-                )
-                temps += duree
+        channel = 0
+        volume = 127
+        for mot in partition:
+            for i, syllabe in enumerate(mot):
+                syl = str(syllabe)
+                if i + 1 < len(mot):
+                    syl = syl + '-'
+                for j, note in enumerate(
+                        notes for notes in syllabe.musique
+                        if isinstance(notes, Note)
+                ):
+                    pitch = note.hauteur + transposition
+                    duree = int(note.duree)
+                    self.sortiemidi.addTempo(
+                        piste, temps, (self.tempo * duree / note.duree)
+                    )
+                    self.sortiemidi.addNote(
+                        piste,
+                        channel,
+                        pitch,
+                        temps,
+                        duree / 2,
+                        volume
+                    )
+                    if j == 0:
+                        self.sortiemidi.addText(
+                            piste,
+                            temps,
+                            syl
+                        )
+                    temps += duree / 2
 
     def ecrire(self, chemin):
         """Écriture effective du fichier MIDI"""
