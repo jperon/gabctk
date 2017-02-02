@@ -898,13 +898,16 @@ class SigneRythmique(Signe):
     """Épisèmes, points"""
     def __init__(self, gabc, **params):
         Signe.__init__(self, gabc, **params)
-        self.precedent.appliquer({
-            "'": 'ictus',
-            '_': 'episeme',
-            '.': 'point',
-            'w': 'quilisma',
-            '~': 'liquescence',
-        }[self.gabc])
+        try:
+            self.precedent.appliquer({
+                "'": 'ictus',
+                '_': 'episeme',
+                '.': 'point',
+                'w': 'quilisma',
+                '~': 'liquescence',
+            }[self.gabc])
+        except AttributeError:
+            print("Bizarrerie : signe rythmique sans note.")
 
 
 class Note(Signe):
