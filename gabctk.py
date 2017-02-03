@@ -1181,7 +1181,7 @@ class Lily:
             "c, ", "des, ", "d, ", "ees, ", "e, ", "f, ",
             "fis, ", "g, ", "aes, ", "a, ", "bes, ", "b, ",
             "c", "des", "d", "ees", "e", "f",
-            "fis", "g", "aes", "a", "bes", "b", "c"
+            "fis", "g", "aes", "a", "bes", "b", "c'"
             )[(partition.transposition + 12) % 24]
         self.tonalite = partition.tonalite[0]
         self.texte, self.musique = self.traiter_partition(partition)
