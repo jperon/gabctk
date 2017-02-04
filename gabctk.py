@@ -26,6 +26,7 @@ X: 1
 T: %(titre)s
 L: 1/8
 M: none
+K: transpose=%(transposition)s
 U: P = !uppermordent!
 U: I = !wedge!
 U: R = !tenuto!
