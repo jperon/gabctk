@@ -3,7 +3,7 @@ Gabctk
 
 Outil pour travailler sur les fichiers gabc.
 
-[English Documentation](http://www.sspxusa.org/goodies/gabc2mid/)
+[English Documentation](http://www.sspxusa.org/goodies/gabc2mid/). Note : this doc is for legacy gabc2mid ; it's obsolete on several points.
 
 Gabc
 ----
