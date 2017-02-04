@@ -28,8 +28,6 @@ L: 1/8
 M: none
 K: transpose=%(transposition)s
 U: P = !uppermordent!
-U: I = !wedge!
-U: R = !tenuto!
 %(musique)s
 w: %(paroles)s
 '''
@@ -1101,9 +1099,9 @@ class Note(Signe):
         if 'point' in self._nuances:
             abc = abc + '2'
         if 'episeme' in self._nuances:
-            abc = 'R' + abc
+            abc = '!tenuto!' + abc
         if 'ictus' in self._nuances:
-            abc = 'I' + abc
+            abc = '!wedge!' + abc
         if 'quilisma' in self._nuances:
             abc = 'P' + abc
         if 'liquescence' in self._nuances:

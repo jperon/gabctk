@@ -20,13 +20,16 @@ Ce script est dérivé de [gabc2mid](https://github.com/jperon/gabc2mid) ;
 l'optique du projet s'étant élargie, gabc2mid restera tel qu'il est à présent
 (sauf correction de bug), et les développements auront lieu ici.
 Gabctk parcourt le code *gabc*, en extrait ce qui concerne la mélodie,
-et produit celle-ci sous la forme d'un fichier midi et/ou lilypond.
+et produit celle-ci sous la forme d'un fichier midi et/ou lilypond, abc,
+musicxml.
 Il peut aussi extraire le texte dans un fichier texte.
 La syntaxe est la suivante :
 
     gabctk.py -i </chemin/vers/le/fichier/source.gabc> \
              [-o </chemin/vers/le/fichier/destination.mid>] \
              [-l </chemin/vers/le/fichier/destination.ly>] \
+             [-c </chemin/vers/le/fichier/destination.abc>] \
+             [-x </chemin/vers/le/fichier/destination.xml>] \
              [-b </chemin/vers/le/fichier/destination.tab>] \
              [-e </chemin/vers/le/fichier/destination.txt>] \
              [-m </chemin/vers/le/fichier/destination.mus>] \
@@ -49,7 +52,11 @@ Le tempo est exprimé en temps premiers par minute :
 sa valeur par défaut est 165.
 
 La transposition est exprimée en demi-tons. En son absence, gabctk transposera
-automatiquement le chant sur une tessiture facile à chanter.
+automatiquement le chant sur une tessiture facile à chanter. Pour les formats
+abc et musicxml, la gestion de la transposition est laissée à abc et aux
+différents logiciels compatibles avec ces formats. Les notes resteront donc
+graphiquement en place, mais la mélodie sera jouée à la hauteur indiquée par
+ce paramètre.
 
 Si des alertes sont définies, gabctk renverra un message chaque fois
 qu'il détecte la chaîne de caractères dans le texte du chant.
@@ -61,5 +68,3 @@ vous pouvez aussi utiliser la syntaxe suivante :
 
     gabctk.py </chemin/vers/le/fichier/source.gabc>
              [</chemin/vers/le/fichier/destination.mid>]
-             OU
-             [</chemin/vers/le/fichier/destination.ly>]
