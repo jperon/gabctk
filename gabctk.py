@@ -1097,6 +1097,8 @@ class Note(Signe):
     def abc(self):
         abc = self._abc
         if 'point' in self._nuances:
+            while abc[-1] == ' ':
+                abc = abc[:-1]
             abc = abc + '2'
         if 'episeme' in self._nuances:
             abc = '!tenuto!' + abc
