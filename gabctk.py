@@ -15,16 +15,20 @@ partition.
 # Variables globales ###################################################
 
 TITRE = "Cantus"
+H_LA = 57  # Le nombre correspond au "pitch" MIDI.
 TEMPO = 165
 DUREE_EPISEME = 1.7
 DUREE_AVANT_QUILISMA = 2
 DUREE_POINT = 2.3
 DEBUG = False
 ABC_ENTETE = '''
-X:1
-T:%(titre)s
-L:1/8
-M:none
+X: 1
+T: %(titre)s
+L: 1/8
+M: none
+U: P = !uppermordent!
+U: I = !wedge!
+U: R = !tenuto!
 %(musique)s
 w: %(paroles)s
 '''
@@ -80,8 +84,10 @@ import os
 import sys
 import getopt
 import re
-from midiutil.MidiFile import MIDIFile
 import unicodedata as ud
+from midiutil.MidiFile import MIDIFile
+from abc2xml import abc2xml
+abc2xml.info = lambda x, warn=1: x
 
 
 # Méthodes globales ####################################################
@@ -99,6 +105,7 @@ def aide(erreur, code, commande=os.path.basename(sys.argv[0])):
         + '[-o <output.mid>]\n          '
         + '[-l <output.ly>]\n          '
         + '[-c <output.abc>]\n          '
+        + '[-x <output.xml>]\n          '
         + '[-e <texte.txt>]\n          '
         + '[-t <tempo>]\n          '
         + '[-d <transposition>]\n          '
@@ -119,13 +126,14 @@ def traiter_options(arguments):  # pylint:disable=R0912
     try:
         opts = getopt.getopt(
             arguments,
-            "hi:o:l:c:e:m:b:t:d:n:a:v",
+            "hi:o:l:c:x:e:m:b:t:d:n:a:v",
             [
                 "help",             # Aide
                 "entree=",          # Fichier gabc
                 "midi=",            # Fichier MIDI
                 "lily=",            # Code ly
                 "abc=",             # Code abc
+                "mxml=",            # Code MusicXML
                 "export=",          # Texte
                 "musique=",         # Code gabc
                 "tab=",             # Fichier "tablature" pour accompagnement
@@ -149,6 +157,9 @@ def traiter_options(arguments):  # pylint:disable=R0912
             options['sortie']['lily'] = FichierTexte(arg)
         elif opt in ("-c", "--abc"):
             options['sortie']['abc'] = FichierTexte(arg)
+        elif opt in ("-x", "--mxml"):
+            options['sortie']['abc'] = FichierTexte(arg)
+            options['sortie']['xml'] = True
         elif opt in ("-e", "--export"):
             options['sortie']['texte'] = FichierTexte(arg)
         elif opt in ("-m", "--musique"):
@@ -246,9 +257,11 @@ def gabctk(
         lily = Lily(partition, titre=titre, tempo=tempo)
         lily.ecrire(sortie['lily'].chemin)
     # Créer le fichier abc
-    if 'abc' in sortie:
+    if 'abc' in sortie or 'xml' in sortie:
         abc = Abc(partition, titre=titre, tempo=tempo)
-        abc.ecrire(sortie['abc'].chemin)
+        abc.ecrire(
+            sortie['abc'].chemin, 'abc' in sortie, 'xml' in sortie
+        )
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
     # Création d'une variable contenant les paroles.
@@ -392,6 +405,12 @@ class Gabc:
         partition = Partition(
             self.entetes['name'], transposition=transposition
         )
+        reprise = re.compile("<i>.*i*j\..*</i>")
+        for i, syllabe in enumerate(syllabes):
+            rep = reprise.search(syllabe)
+            if rep:
+                syllabes[i - 2] += ' ' + rep.group(0)
+                syllabes[i] = reprise.sub('', syllabe)
         # Extraction des différents signes
         mot = []
         for txt, nme in zip(syllabes, neumes):
@@ -668,6 +687,7 @@ class Syllabe(ObjetLie):
             abc_texte = ''
         abc_texte = abc_texte.replace(' ', '~')
         return abc_texte\
+            .replace('*', '~✶').replace('~~', '~')\
             .replace('<i>', '').replace('</i>', '')\
             .replace('<b>', '').replace('</b>', '')\
             .replace('{', '').replace('}', '')\
@@ -1080,11 +1100,11 @@ class Note(Signe):
         if 'point' in self._nuances:
             abc = abc + '2'
         if 'episeme' in self._nuances:
-            abc = '!tenuto!' + abc
+            abc = 'R' + abc
         if 'ictus' in self._nuances:
-            abc = '!wedge!' + abc
+            abc = 'I' + abc
         if 'quilisma' in self._nuances:
-            abc = '!uppermordent!' + abc
+            abc = 'P' + abc
         if 'liquescence' in self._nuances:
             pass
         return abc
@@ -1189,7 +1209,7 @@ class Note(Signe):
         if not gabc:
             gabc = self.gabc
         # Définition de la gamme.
-        h_la = 57  # Le nombre correspond au "pitch" MIDI.
+        h_la = H_LA
         gamme = {
             'notes': ('la', 'si', 'do', 're', 'mi', 'fa', 'sol'),
             'hauteurs': (
@@ -1342,7 +1362,13 @@ class Abc:
         self.titre = titre
         self.tempo = int(tempo/2)
         self.texte, self.musique = self.traiter_partition(partition)
-        self.transposition = None
+        self.code = ABC_ENTETE % {
+            'titre': self.titre,
+            'tonalite': self.tonalite,
+            'musique': self.musique,
+            'transposition': partition.transposition,
+            'paroles': self.texte
+        }
 
     @classmethod
     def traiter_partition(self, partition):
@@ -1356,14 +1382,6 @@ class Abc:
                     syl = syl + '-'
                 notes = tuple(notes for notes in syllabe.musique)
                 for j, note in enumerate(notes):
-                    # try:
-                    #     if (
-                    #         i + 1 == len(mot) and j + 1 == len(notes) and
-                    #         isinstance(partition[m + 1][0].musique[0], Barre)
-                    #     ):
-                    #         musique += partition[m + 1][0].musique[0].abc
-                    # except IndexError:
-                    #     pass
                     musique += note.abc
                     if isinstance(note, Note) or isinstance(note, Alteration):
                         if j == 0:
@@ -1372,20 +1390,25 @@ class Abc:
                                 texte += '_'
                         elif not isinstance(notes[j - 1], Alteration):
                             texte += '_'
+                    elif isinstance(note, Barre) and j == 0:
+                        if texte[-2] == '_' and syl != '':
+                            texte = texte[:-2] + syl
+                        else:
+                            texte = texte[:-1] + syl
             texte += ' '
             musique += ' '
         return texte, musique[:-3] + '|]'
 
-    def ecrire(self, chemin):
+    def ecrire(self, chemin, abc=True, xml=False):
         """Écriture effective du fichier abc"""
         sortie = FichierTexte(chemin)
-        sortie.ecrire(ABC_ENTETE % {
-            'titre': self.titre,
-            'tonalite': self.tonalite,
-            'musique': self.musique,
-            'transposition': self.transposition,
-            'paroles': self.texte
-        })
+        if abc:
+            sortie.ecrire(self.code)
+        if xml:
+            dossier, fichier = os.path.split(chemin)
+            abc2xml.convert(
+                dossier, fichier[:-4], self.code, False, False, False
+            )
 
 
 class Midi:

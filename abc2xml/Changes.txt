@@ -1,0 +1,350 @@
+Version 71
+- Added new option --meta to allow users to specify a mapping of ABC info fields to MusicXML meta data elements.
+  Depending on the music editor used, some info fields may get a reasonable position onto the front page of the score
+- The first T: infofield is translated to the MusicXML work-title element. Subsequent T: fields are concatenated onto
+  the the MusicXML work-number element. In Finale and MuseScore the work-number is displayed in a smaller font
+  below the work title.
+- Multiple ABC info fields of the same type are concatenated with a new line as separator.
+- When the -t option is used ontly the first T: info field is used as file name.
+
+Version 70
+- ABC meta data that is not supported in MusicXML is translated into <miscellaneous> elements.
+  Previously this data was put into <credit> elements. However, <credit> elements are only meant for formatted display
+  of data. Writing metadata without formatting into <credit> elements (as abc2xml did) inhibited display of other
+  important data, like title, composer or lyricist.
+- new option -t causes abc2xml to use the tune title as file name. Useful for multi tune files.
+
+Version 69
+- Remove redundant instrument definitions and tags from a multi voice part. Redundant instrument definitions can arise
+  when ABC voices with identical midi instruments are mapped onto one (grand) staff.
+- Duration of a tremolo pair is internally doubled, because MusicXML considers tremolo pairs as duplets (two notes in
+  the time of one) and halves the duration again.
+  Thus !//-!A2A2 is internally !//-!A4A4 and is translated as (2:1:2 A4A4 which has the same duration as A2A2 but the
+  noteheads are those of an A4.
+
+Version 68
+- The vertical postition of a note specified with the staff step value in I:percmap, no longer depends on the current clef.
+  the staff step now always refers to the vertical note position with a treble clef.
+- When slurs close and open at the same note, the closing slurs are treated first.
+
+Version 67
+- %%MIDI instrument/channel changes translated to (text) directions in xml (works with Finale Notepad)
+- implementation of I:percmap <abc-note> <staff-step> <midi-number> <xml-notehead> (Proposal by Alexander Scheutzow)
+  See readme.txt for description of syntax, usage and semantics.
+- %%MIDI drummap is translated to an equivalent I:percmap
+- The octave= parameter was not recognized without a clef= in the same line (for both V: and K:)
+- The octave= required a signed number +n of -n. Now the + sign is optional.
+- translate stafflines attribute. (no correction for display-step yet)
+- translation of %%MIDI rationalized.
+
+Version 66
+- deleted the code for the post-fix meaning of closing decorations. A decoration now always refers to the following
+  note (even if it is in the next measure). The only exception is the slur closing bracket.
+- replace illegal values of L: with default values (caused exception)
+- replace illegal values of Q: with default values (caused exception)
+- correctly parse multiple fields of V: (some fields were discarded)
+
+Version 65
+- multiple note tremolo decoration translated: !/-!, !//-! and !///-! (see readme.txt for details)
+- an xml metronome element is only generated when a numeric tempo is present (e.g. Q: 1/4=108).
+- when a Q: field only contains text, a hidden tempo value is derived (using tempo map from abc2midi).
+- removed special grammar for decorations of chord notes
+- removed special grammar for decorations before barline. The position of segno, coda and fine is now always at the
+  correct side of the measure in which they are defined, independent of their ABC-position within that measure.
+- move closing decorations in front of the note they belong to (postfix to prefix).
+
+Version 64
+- single tremolo decoration translated: !/!, !//! and !///!
+- glissando decoration translated: !-(! ... !-)! and !~(! ... !~)! (Proposal by Alexander Scheutzow)
+- added translations for !plus! or !+!
+- text in Q: fields is added as text to the xml tempo direction.
+
+Version 63
+- changed the pageformat defaults to those of abcm2ps (A4) in stead of those used in MuseScore.
+- in the -p command line option (page format) changed the "space" parameter (MuseScore) to the "scale" parameter (abcm2ps)
+- python version test also works with python2.6 (caused an exeption previously).
+
+Version 62
+- mxl output was broken (option -z)
+- clefs could be set to the wrong type when a type designation happened to occur in a name="..." string.
+- small code change for compatibility with EasyABC's interface to abc2xml.
+
+Version 61
+- program can run with either Python 2.6, 2.7 or Python 3.x. (Python 3.4 runs 17% slower than 2.7 on my regression set)
+
+Version 60
+- use lyric alignment as defined in the 2.1 standard.
+  Lyric lines are parsed as normal inlined information fields. (suggested by Alexander Scheutzow).
+- integrate lyric grammar into the main abc grammar (was a separate grammer previously).
+- only base name of input path is used when combined with the -o directory path. (correction P.Villiger)
+- skip illegal user defined symbols (with warning) in stead of raising a syntax exception.
+
+Version 59
+- allow X: without number or with arbitrary textstring
+- allow Y: information field
+- the -r option is consequently passed as parameter to keep functions referentially transparent. (was a global variable)
+- corrected error message for illegal use of U:
+
+Version 58
+- grammar for I:score instruction replaces ad hoc parsing.
+- voice merging, part grouping and grand staffs are derived by transformation of the parse tree of I:score.
+- also move clef redefinitions after [I:staff +/-n].
+- avoid a false beam break when [I:staff +/-n] is used within a beamed note group.
+- absolute staff numbers in [I:staff n] are mapped to MusicXML grand staff numbers (when possible) for reasons
+  of compatibility with abcm2ps. Usage of absolute staff numbers is discouraged.
+- added translation of the [+-^_]15 octave clefs.
+- no default channel/panning/volume in <midi-instrument> elements.
+
+Version 57
+- grand staff implemented.
+- in an [I:score] instruction recognize a braced voice group as a grand staff when the opening brace is followed by
+  an asterix ('{*' no space allowed, syntax proposed by Alexander Scheutzow).
+- also recognize a normal braced voice group as a grand staff when precisely one of the braced voices has a name.
+- the name of a staff or part is taken from the first of its voices (in ABC source order) for which a name is defined.
+- within a grand staff notes and directions preceded by [I:staff +/-n] are moved n staffs upwards or downwards.
+- accept voice ids with a leading asterix in I:score instructions (for the time being the asterix is discarded, however)
+
+Version 56
+- the <grace/> element should come before the <chord/> element in a note. (previously caused syntax warning with FinaleNotepad)
+- translates the _8, ^8 variants of the clefs in addition to the +8, -8. Also translates octave= argument of V: and K:
+- part names are left empty when not explicitly given using V:id name="<part name>" (previously id was used in that case)
+- transpose= was only honoured when a typed clef= definition was present, now is works in any V: or K: field.
+- a tempo definition in the ABC header (Q:) is treated as an inline tempo ([Q:]) for the first voice.
+- repeated occurrences of [I:MIDI] in a voice are translated into a MusicXML instrument changes for that voice.
+  Neither Finale nor Musescore recognize the relevant MusicXML elements (<sound/midi-instrument> and <note/instrument> yet.
+- new cue=on/off attribute for K: and V: definitions, to mark sections of cue notes in a voice (proposed by Alexander Scheutzow).
+  Neither Finale nor Musescore handle cue size for directions, yet (<level size="cue">).
+- normally whole measure rests are discarded when merging staffs. Use option -r to keep these rests in the merged results.
+
+Version 55
+- replaced info message text: "leeg" with "empty voice", when skipping an empty voice.
+- avoided exception when ABC voice has only one measure containing only a volta number
+- do not output an xml-backup element when it has zero duration
+
+Version 54
+- allow gracenotes within chords
+- discard unbalanced chord brackets (caused a syntax error previously)
+- chords containing only rests caused an exception
+- ABC-code like: B2 1 caused an exception, now interpreted as: B2/1
+
+Version 53
+- tie to a chord with a single note caused an exception.
+- a first line with a single measure and only a left bar line caused a syntax error.
+- a first line with a single measure with only chords and no bar lines caused a syntax error.
+- option -z or --mxl writes an additional compressed xml file with extention .mxl
+- better treatment of barlines with spaces interspersed.
+- dot after note right before barline caused syntax error (now only warning and skip)
+
+Version 52
+- accept and translate chords in a grace sequence (caused an exception previously)
+- corrected bug when parsing %%score without space between voice number and left bracket, like %%staves 1(2 3)
+
+Version 51
+- treat abc file without any X: as a single tune and prepend X:1
+- recognize alto4 as alternative notation for tenor clef
+
+Version 50
+- corrected translation of the clef octave change notation (i.e. +8, -8 suffix)
+
+Version 49
+- ties between different pitches are converted to slurs (previously the tie in 'A-B A' would extend
+to the second A, now there will be a slur between A and B).
+- do not add accidentals to tied notes even when present in ABC code.
+- use consistent voice numbering in XML when merging ABC-voices with overlays.
+
+Version 48
+- M: field with more than one slash caused an exception.
+- limit shortest note durations to 1/64
+- skip redundant closing slurs (caused exception previously)
+- check instrument id when generating MIDI elements (caused exception when errors in %%score)
+- issue warning message when illegal user defined characters are used (X,Y,Z,x,y,z)
+- use correct xml-syntax for credit elements (was wrong in version 47)
+- translate explicit alterations for non traditional keys
+(non traditional key signatures not supported by MuseScore, but note alterations are correct)
+- skip more illegal symbols in stead of issuing parse error
+
+Version 47
+- translate middle=<pitch> in clefs
+- translate transpose=<semitones> in clefs (also %%MIDI transpose is recognised)
+- translate subname= in V: fields (name= was already translated)
+- translate "%%MIDI program" and "%%MIDI channel" (multiple instruments per staff supported)
+- an abc file with multiple tunes can be converted to a set of musicxml files.
+- new command line option "-m SKIP NUM" to set the range of tunes to be converted for large abc files.
+- leading dot was skipped when parsing a float in page format settings (.5in -> 5in)
+- accept [r:] syntax for remarks (caused syntax error previously)
+- relax syntax for user defined symbols (allowed character set was needlessly restricted)
+- all abc meta-info fields are translated to credit tags (with type)
+
+Version 46
+- warn when unit length is a single integer and assume L:1/8 (caused exception previously)
+- translate tune with only header fields (caused exception previously)
+- translate tunes where first voice definition appears in the middle of the body (caused exception previously)
+- skip illegal characters in chords and issue warning (caused syntax error previously)
+- skip illegal U: field in body and issue warning (caused syntax error previously)
+- more illegal characters between elements are skipped but with less specific warnings.
+- line endings with only <cr> were not handled properly
+- add check for text without any abc code in it (caused exception previously)
+- conversion of pObj to string caused exception when it contained non latin-1 characters (e.g. in warning messages)
+
+Version 45
+- ignore old style continuation when next line is w:
+- replace illegal durations by the nearest smaller legal one (caused exception previously)
+- when multiple stave mappings keep only first one and issue warning
+- accept start of next tune (X:) when not preceeded by an empty line (caused syntax error previously)
+- warn when unit length is no fraction of integers and assume L:1/8 (caused exception previously)
+- raise meaningful exception when the tune is empty (e.g. empty line after K:)
+- broken rhythm involving a rest was not translated
+
+Version 44
+- translate volta brackets with quoted text (in addition to numbers and number ranges)
+- when error in M: field assume 4/4. (caused exception previously)
+- allow voice names with underscore
+- bug in parsing %%score when no space between two stave groups, like: (v1 v2)(v3 v4)
+- corrected merging of voices of unequal length (caused exception previously)
+- user defined symbols with '()<>.' chars were not accepted
+- when p was a user defined symbol also !p! was erroneously seen as used defined
+- skip random text before tune starts (caused syntax error previously)
+
+Version 43
+- more non standard bar lines recognized (e.g. :])
+- accept X: fields when the tune number is followed by non-numeric chars.
+- allow complex meter (M:2+2+3/8)
+- warn for illegal L: fields (like L:1/6) and use 1/8 instead
+- accept and skip E: field
+- wedge close was not recognized when written with old '+' notation (bug was in fixSlurs)
+- remove * and ** at end of line (probably old notation for right adjustment)
+- accept and ignore a Q:-field with only text
+- replace "Expected end of text at .." message from parser by "Syntax error at .."
+
+Version 42
+- translate tempo from Q: field
+- translate -8 in key or voice field (temporary fix)
+- accept empty text annotations
+- in addition to !<(! also accept !crescendo(! and the same for diminuendo
+- ignore line continuation after information field
+- in lyrics treat isolated tildes as note skips
+- encode parse error message in utf-8 and when that fails in latin-1
+- limit length of misplaced symbol message to 80 chars
+- put text between K: and first V: into the header (was skipped previously)
+- bug in %%score when no spaces around '|'-character
+- added "o" as alternative for dim ("Edim7" = "Eo7")
+- in chord symbols "+" and "-" were not always translated correctly
+- tuple abbreviation (n:: and (n::m were not translated correctly
+- dotted barlines translated (: .|)
+
+Version 41
+- translate (multi-)measure rests: Z, X
+- discard misplaced broken symbols (no more exceptions)
+- discard misplaced octave suffices (warning, no parse error)
+- discard misplaced header fields (warning, no parse error after K:)
+- show location of misplaced symbols
+- only parse header if it is not empty (-> better error messages)
+- accept score/stave-directives and page formatting also in body
+
+Version 40
+- when reading a file with multiple tunes only translate the first one
+- command line option added for scale, page size and margins
+- all %% directives are changed into I: fields
+- translate scale, page size and margins from ABC directives, but command line overrides
+
+Version 39
+- accept and discard rests in chords
+- accept and discard accidentals before rests
+- spacer is treated as a normal note but discarded
+- accept chords with only one note
+- invisible rests (x) are translated as invisible in xml too.
+
+Version 38
+- also recognise ma and mi in chord symbols (e.g. Cma7, Cmi7)
+- replace tildes in lyrics by spaces
+- accept syllabi starting with a tilde
+- accept space after V: 1
+
+Version 37
+- accidental elements are written whenever an explicit accidentals are present in ABC (for finale, mscore does not need them)
+- tuplet notation elements are written to mark begin and end of tuplet (for finale, mscore doet not need them)
+- normal-type elements are written when tuplets are irregular
+- issue understandable message when metre is not recognized
+- take (compound) metre into account when translating tuplet shorthands (as described in ABC 2.1)
+- do not add beaming-elements into rest-elements (still break beam when long rest in beamgroup).
+
+Version 36
+- volta-stop elements were somtimes (recognised at and) put into a left-bar element, which
+is not valid MusicXML. These elements are now put into the right-bar of the previous measure.
+- accept volta's without barline: "abc [1 def" is read as: "abc |[1 def"
+- accept volta's after redundant left barline: "abc |\n|[1 def" is read as "abc |\n[1 def"
+- changed document order of repeat and ending elements (MusicXML order requirement)
+- xml output to stdout is also encoded in utf-8 (was erroneously done in latin-1)
+- prevent finale detecting the string "xml" in the <software>-tag (finale quirk)
+- only issue a <supports>-tag when abc code really uses explicit linebreaks
+
+Version 35
+- recognise and translate (nested) braces and brackets in both %%staves and %%score
+- translate more keys (maj, min, mix, dor, phr, lyd, loc and none)
+- recognise and skip [I:...] in body
+- invisible bar lines translated
+- silently skip slur end when there is no corresponding slur begin
+- also accept user defined symbols delimited by +
+- limit length of syntax error message (in a way compatible with pyparsing internal administration)
+- add <identification/encoding/supports> tag, because Finale seems to expect it.
+
+Version 34
+- removed copy() from 2 parse expressions because it did not appear to work on Linux
+- recognize, warn and skip misplaced accidentals and ties
+- bug in old style continuation when there was nothing left to continue with.
+- limit syntax error output to 80 chars, with error in the middle.
+
+Version 33
+- added !coda!, !segno!, !fine!, !dacoda!, !dalsegno! etc.
+- move coda and segno when just before a barline to next measure
+- added several ornaments and articulations.
+- recognize (and skip) '<' and '>' position markers for text expressions
+- fall back to text expression for unrecognized chord symbols.
+- recognize (and skip) alternative chord symbols between brackets
+- interpret expressions like "ABC" as text expression and not as misspelled chord symbol.
+- beam detection improved (grammar)
+
+Version 32
+- grammar for both linebreaks ! and $ without ambiguities!
+- remove commandline option for linebreak (also I:linebreak not needed anymore)
+- accept both + and ! for deco's
+- accept (and skip) empty fields
+- accept ']' in all header fields
+- strip leading and trailing spaces from header fields (T: title -> T:title)
+- also translate inline fields before a left barline
+- recognise volta after forward repeat
+- translate dashes to comma's in volta ([1-3 -> [1,3)
+- recognise slurs after broken rhythm symbols i.e. replace (ab>>)c -> (ab)>>c
+- skip P: fields
+- allow lines with a single measure without barline
+- combine ~-syllabi (multiple syllabi under one note)
+- skip W: lyrics because no musicXML equivalent
+- translate longa and breve
+
+Version 31
+- bug in treatment of double-repeat when it is at the end of a voice-lyrics block
+- added <DOCTYPE> declaration because Finale seems to need it.
+- added identification/encoding element so people can see what software made the file
+
+Version 30
+- voice overlays
+- merging voices rewritten: lyrics renumbering, measurewise merging
+- linebreak after left-bar is output directly (i.e. not postponed to the next measure)
+
+Version 29
+- implementation of beaming
+- insert line breaks at start of next measure
+- keep only one line break per measure when mapping multiple voices
+- renumber slurs when clash occurs during voice mapping
+- syntax error message is encoded in latin-1
+- bug in recognition of presence of open tie
+
+Version 28
+- all chord symbols were erroneously recognized as text annotations (wrong syntax priority)
+- Recognize (and skip) redundant left side bars
+- don't stumble on a double repeat (::) when it occurs at the and of a voice/lyrics block
+- better error message when header fields appear after the first K:
+- output of non latin-1 strings on stderr uses repr()
+
+Version 27
+- Initial release
