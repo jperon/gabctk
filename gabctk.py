@@ -157,8 +157,7 @@ def traiter_options(arguments):  # pylint:disable=R0912
         elif opt in ("-c", "--abc"):
             options['sortie']['abc'] = FichierTexte(arg)
         elif opt in ("-x", "--mxml"):
-            options['sortie']['abc'] = FichierTexte(arg)
-            options['sortie']['xml'] = True
+            options['sortie']['xml'] = FichierTexte(arg)
         elif opt in ("-e", "--export"):
             options['sortie']['texte'] = FichierTexte(arg)
         elif opt in ("-m", "--musique"):
@@ -258,9 +257,14 @@ def gabctk(
     # Créer le fichier abc
     if 'abc' in sortie or 'xml' in sortie:
         abc = Abc(partition, titre=titre, tempo=tempo)
-        abc.ecrire(
-            sortie['abc'].chemin, 'abc' in sortie, 'xml' in sortie
-        )
+        if 'abc' in sortie:
+            abc.ecrire(
+                sortie['abc'].chemin, abc=True
+            )
+        if 'xml' in sortie:
+            abc.ecrire(
+                sortie['xml'].chemin, abc=False, xml=True
+            )
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
     # Création d'une variable contenant les paroles.
@@ -686,6 +690,7 @@ class Syllabe(ObjetLie):
             abc_texte = ''
         abc_texte = abc_texte.replace(' ', '~')
         return abc_texte\
+            .replace('-', '')\
             .replace('*', '~✶').replace('~~', '~')\
             .replace('<i>', '').replace('</i>', '')\
             .replace('<b>', '').replace('</b>', '')\
@@ -1407,9 +1412,21 @@ class Abc:
             sortie.ecrire(self.code)
         if xml:
             dossier, fichier = os.path.split(chemin)
+            fichier = '' if fichier == '-' else fichier
+            if fichier and not dossier:
+                dossier = '.'
             abc2xml.convert(
                 dossier, fichier[:-4], self.code, False, False, False
             )
+
+
+class MusicXML(Abc):
+    """Classe encapsulant la classe Abc pour produire du MusicXML"""
+    def __init__(self, partition, titre, tempo):
+        Abc.__init__(self, partition, titre, tempo)
+
+    def ecrire(self, chemin):
+        Abc.ecrire(self, chemin, abc=False, xml=True)
 
 
 class Midi:
@@ -1435,7 +1452,7 @@ class Midi:
         volume = 127
         for mot in partition:
             for i, syllabe in enumerate(mot):
-                syl = str(syllabe)
+                syl = str(syllabe).replace('℣', 'V').replace('℟', 'R')
                 if i + 1 < len(mot):
                     syl = syl + '-'
                 for j, note in enumerate(
