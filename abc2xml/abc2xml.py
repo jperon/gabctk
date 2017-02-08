@@ -14,13 +14,14 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 See the GNU General Public License for more details. <http://www.gnu.org/licenses/gpl.html>.
 '''
 
+import types, sys, os, re, datetime
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from pyparsing import Word, OneOrMore, Optional, Literal, NotAny, MatchFirst
 from pyparsing import Group, oneOf, Suppress, ZeroOrMore, Combine, FollowedBy
 from pyparsing import srange, CharsNotIn, StringEnd, LineEnd, White, Regex
 from pyparsing import nums, alphas, alphanums, ParseException, Forward
 try:    import xml.etree.cElementTree as E
 except: import xml.etree.ElementTree as E
-import types, sys, os, re, datetime
 
 VERSION = 71
 

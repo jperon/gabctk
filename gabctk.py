@@ -20,7 +20,7 @@ import sys
 import getopt
 import re
 import unicodedata as ud
-sys.path.append('.')
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from midiutil.MidiFile import MIDIFile
 from abc2xml import abc2xml
 abc2xml.info = lambda x, warn=1: x
