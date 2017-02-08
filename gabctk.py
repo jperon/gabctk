@@ -12,6 +12,20 @@ partition.
 
 """
 
+
+# Librairies externes ##################################################
+
+import os
+import sys
+import getopt
+import re
+import unicodedata as ud
+sys.path.append('.')
+from midiutil.MidiFile import MIDIFile
+from abc2xml import abc2xml
+abc2xml.info = lambda x, warn=1: x
+
+
 # Variables globales ###################################################
 
 TITRE = "Cantus"
@@ -26,6 +40,7 @@ X: 1
 T: %(titre)s
 L: 1/8
 M: none
+K: clef=treble
 K: transpose=%(transposition)s
 U: P = !uppermordent!
 %(musique)s
@@ -75,18 +90,6 @@ Paroles = \\lyricmode {
   }
   \\midi{}
 }'''
-
-
-# Librairies externes ##################################################
-
-import os
-import sys
-import getopt
-import re
-import unicodedata as ud
-from midiutil.MidiFile import MIDIFile
-from abc2xml import abc2xml
-abc2xml.info = lambda x, warn=1: x
 
 
 # Méthodes globales ####################################################
@@ -946,8 +949,8 @@ class Barre(Signe):
         """Correspondance entre les barres gabc et les barres abc"""
         return {
             '': "",
-            ',': "|",
-            ';': "|",
+            ',': "!shortphrase![|]",
+            ';': "!mediumphrase![|]",
             ':': "|",
             '::': "||"
         }[self.gabc]
@@ -1506,7 +1509,7 @@ class FichierTexte():
         if self.chemin == '-':
             texte = sys.stdin.read(-1)
         else:
-            with open(self.chemin, 'r') as fichier:
+            with open(self.chemin, 'r', encoding='utf-8') as fichier:
                 texte = fichier.read(-1)
         return texte
 
@@ -1515,7 +1518,7 @@ class FichierTexte():
         if self.chemin == '-':
             sys.stdout.write(contenu)
         else:
-            with open(self.chemin, 'w') as fichier:
+            with open(self.chemin, 'w', encoding='utf-8') as fichier:
                 fichier.write(contenu)
 
 
