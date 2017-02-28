@@ -17,12 +17,12 @@ partition.
 
 import os
 import sys
-import getopt
+from argparse import ArgumentParser, FileType
 import re
 import unicodedata as ud
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from midiutil.MidiFile import MIDIFile
-from abc2xml import abc2xml
+from midiutil.MidiFile import MIDIFile  # noqa
+from abc2xml import abc2xml  # noqa
 abc2xml.info = lambda x, warn=1: x
 
 
@@ -122,80 +122,57 @@ def aide(erreur, code, commande=os.path.basename(sys.argv[0])):
 
 def traiter_options(arguments):  # pylint:disable=R0912
     """Fonction maîtresse"""
-    # Initialisation des variables correspondant aux paramètres.
-    options = {'sortie': {}, 'alertes': []}
     # Analyse des arguments de la ligne de commande.
-    try:
-        opts = getopt.getopt(
-            arguments,
-            "hi:o:l:c:x:e:m:b:t:d:n:a:v",
-            [
-                "help",             # Aide
-                "entree=",          # Fichier gabc
-                "midi=",            # Fichier MIDI
-                "lily=",            # Code ly
-                "abc=",             # Code abc
-                "mxml=",            # Code MusicXML
-                "export=",          # Texte
-                "musique=",         # Code gabc
-                "tab=",             # Fichier "tablature" pour accompagnement
-                "tempo=",           # Tempo de la musique
-                "transposition=",   # Transposition
-                "titre=",           # Titre de la pièce
-                "alerter=",         # Caractères à signaler
-                "verbose"           # Verbosité de la sortie
-            ]
-        )[0]
-    except getopt.GetoptError as err:
-        aide('Argument invalide : ' + err.args[1], 1)
-    for opt, arg in opts:
-        if opt == '-h':
-            aide('', 0)
-        elif opt in ("-i", "--entree"):
-            options['entree'] = FichierTexte(arg)
-        elif opt in ("-o", "--midi"):
-            options['sortie']['midi'] = arg
-        elif opt in ("-l", "--lily"):
-            options['sortie']['lily'] = FichierTexte(arg)
-        elif opt in ("-c", "--abc"):
-            options['sortie']['abc'] = FichierTexte(arg)
-        elif opt in ("-x", "--mxml"):
-            options['sortie']['xml'] = FichierTexte(arg)
-        elif opt in ("-e", "--export"):
-            options['sortie']['texte'] = FichierTexte(arg)
-        elif opt in ("-m", "--musique"):
-            options['sortie']['gabc'] = FichierTexte(arg)
-        elif opt in ("-b", "--tab"):
-            options['sortie']['tab'] = FichierTexte(arg)
-        elif opt in ("-t", "--tempo"):
-            options['tempo'] = int(arg)
-        elif opt in ("-d", "--transposition"):
-            options['transposition'] = int(arg)
-        elif opt in ("-n", "--titre"):
-            options['titre'] = arg
-        elif opt in ("-a", "--alerter"):
-            options['alertes'].append(arg)
-        elif opt in ("-v", "--verbose"):
-            options['debug'] = True
-    # Si les arguments n'ont pas été saisis explicitement,
-    # considérer le premier comme étant le gabc en entrée ;
-    # en l'absence de deuxième, donner à la sortie midi
-    # le même nom, en changeant l'extension.
-    try:
-        if 'entree' not in options:
-            options['entree'] = FichierTexte(arguments[0])
-        if 'midi' not in options['sortie']:
-            try:
-                if arguments[1][-4:] == '.mid':
-                    options['sortie']['midi'] = arguments[1]
-            except IndexError:
-                options['sortie']['midi'] = \
-                    re.sub('.gabc', '.mid', arguments[0])
-    # S'il n'y a aucun argument, afficher l'aide.
-    except IndexError:
-        aide('aucun argument', 0)
-    # Envoi de l'entrée vers la méthode de traitement
-    gabctk(**options)
+    args = ArgumentParser()
+    args.add_argument('entree', nargs='*', help='Fichier gabc à traiter')
+    args.add_argument(
+        '-i', '--input', nargs='*', help='Fichier gabc à traiter'
+    )
+    args.add_argument(
+        '-o', '--midi', nargs='?', help='Sortie Midi',
+    )
+    args.add_argument(
+        '-l', '--lily', nargs='?', help='Sortie Lilypond'
+    )
+    args.add_argument(
+        '-c', '--abc', nargs='?', help='Sortie ABC'
+    )
+    args.add_argument(
+        '-x', '--mxml', nargs='?', help='Sortie MusicXML'
+    )
+    args.add_argument(
+        '-e', '--export', nargs='?',
+        help='Ficher texte où exporter les paroles seules'
+    )
+    args.add_argument(
+        '-m', '--musique', nargs='?',
+        help='Fichier texte où exporter les notes seules'
+    )
+    args.add_argument(
+        '-b', '--tab', nargs='?', help='Sortie tablature'
+    )
+    args.add_argument(
+        '-t', '--tempo', nargs=1, type=int, help='Tempo en notes par minute',
+        default=TEMPO
+    )
+    args.add_argument(
+        '-d', '--transposition', nargs=1, type=int,
+        help='Transposition en demi-tons'
+    )
+    args.add_argument(
+        '-n', '--titre', nargs=1, help='Titre de la pièce',
+    )
+    args.add_argument(
+        '-a', '--alerter', nargs='*', help='Caractères à signaler'
+    )
+    args.add_argument(
+        '-v', '--verbose', action='store_true', help='Degré de verbosité'
+    )
+    opts = args.parse_args(arguments)
+    if not opts.entree and opts.input:
+        opts.entree = opts.input
+    for entree in opts.entree:
+        gabctk(entree, opts)
 
 
 def sansaccents(input_str):
@@ -226,63 +203,70 @@ def sortie_verbeuse(debug, gabc, partition):
 
 
 # pylint:disable=R0913
-def gabctk(
-        entree=None,
-        sortie=None,
-        alertes=None,
-        tempo=TEMPO,
-        titre=None,
-        transposition=None,
-        debug=DEBUG,
-):
+def gabctk(entree, opts):
     """Export dans les différents formats"""
     # Extraire le contenu du gabc.
     try:
-        gabc = Gabc(entree.contenu)
+        f_gabc = FichierTexte(entree)
+        gabc = Gabc(f_gabc.contenu)
+        nom = f_gabc.nom
     # Si le gabc n'existe pas, afficher l'aide.
     except FileNotFoundError:
         aide('fichier inexistant', 2)
     # Extraire la partition.
-    partition = gabc.partition(transposition=transposition)
+    partition = gabc.partition(transposition=opts.transposition)
     titre = \
-        titre if titre \
+        opts.titre if opts.titre \
         else gabc.entetes['name'] if 'name' in gabc.entetes \
         else TITRE
-    sortie_verbeuse(debug, gabc, partition)
+    sortie_verbeuse(opts.verbose, gabc, partition)
     # Créer le fichier midi.
-    if 'midi' in sortie:
-        midi = Midi(partition, titre=titre, tempo=tempo)
-        midi.ecrire(sortie['midi'])
+    if opts.midi:
+        midi = Midi(partition, titre=titre, tempo=opts.tempo)
+        sortie = FichierTexte(opts.midi).chemin
+        if os.path.isdir(sortie):
+            sortie = os.path.join(sortie, nom + '.mid')
+        midi.ecrire(sortie)
     # Créer le fichier lilypond
-    if 'lily' in sortie:
-        lily = Lily(partition, titre=titre, tempo=tempo)
-        lily.ecrire(sortie['lily'].chemin)
+    if opts.lily:
+        lily = Lily(partition, titre=titre, tempo=opts.tempo)
+        sortie = FichierTexte(opts.lily).chemin
+        if os.path.isdir(sortie):
+            sortie = os.path.join(sortie, nom + '.ly')
+        lily.ecrire(sortie)
     # Créer le fichier abc
-    if 'abc' in sortie or 'xml' in sortie:
-        abc = Abc(partition, titre=titre, tempo=tempo)
-        if 'abc' in sortie:
+    if opts.abc or opts.mxml:
+        abc = Abc(partition, titre=titre, tempo=opts.tempo)
+        if opts.abc:
+            sortie = FichierTexte(opts.abc).chemin
+            if os.path.isdir(sortie):
+                sortie = os.path.join(sortie, nom + '.abc')
             abc.ecrire(
-                sortie['abc'].chemin, abc=True
+                sortie, abc=True
             )
-        if 'xml' in sortie:
+        if opts.mxml:
+            sortie = FichierTexte(opts.mxml).chemin
+            if os.path.isdir(sortie):
+                sortie = os.path.join(sortie, nom + '.xml')
             abc.ecrire(
-                sortie['xml'].chemin, abc=False, xml=True
+                sortie, abc=False, xml=True
             )
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
     # Création d'une variable contenant les paroles.
     paroles = partition.texte
     # S'assurer des alertes définies par l'utilisateur.
-    verifier(alertes, paroles)
+    if opts.alerter:
+        verifier(opts.alerter, paroles)
     # Si l'utilisateur l'a demandé,
     # écrire les paroles dans un fichier texte.
-    if 'texte' in sortie:
-        sortie['texte'].ecrire(paroles + '\n')
-    if 'gabc' in sortie:
-        sortie['gabc'].ecrire(partition.gabc)
+    if opts.export:
+        FichierTexte(opts.export).ecrire(paroles + '\n')
+    if opts.musique:
+        FichierTexte(opts.musique).ecrire(partition.gabc)
     # Si l'utilisateur l'a demandé,
     # écrire une tablature dans un fichier texte.
-    if 'tab' in sortie:
+    if opts.tab:
         tablature = re.sub(
             '^\s+', '',
             '\n'.join(
@@ -290,7 +274,7 @@ def gabctk(
                 zip(partition.syllabes, partition.musique)
             ).replace('\n ', '\n//\n')
         )
-        sortie['tab'].ecrire(tablature + '\n')
+        FichierTexte(opts.tab).ecrire(tablature + '\n')
 
 
 def verifier(alertes, texte):
@@ -1455,7 +1439,7 @@ class Midi:
         volume = 127
         for mot in partition:
             for i, syllabe in enumerate(mot):
-                syl = str(syllabe).replace('℣', 'V').replace('℟', 'R')
+                syl = str(syllabe)
                 if i + 1 < len(mot):
                     syl = syl + '-'
                 for j, note in enumerate(

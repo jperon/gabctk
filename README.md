@@ -63,8 +63,9 @@ qu'il détecte la chaîne de caractères dans le texte du chant.
 Par exemple, `gabctk -i \<Fichier.gabc\> -a j -a eumdem` renverra un message
 si le texte contient des *j* ou le mot *eumdem*.
 
-Si vous ne voulez pas modifier les options par défaut,
-vous pouvez aussi utiliser la syntaxe suivante :
+Il est encore possible de convertir plusieurs fichiers à la fois. En ce cas,
+il faut donner un dossier en paramètre à `-o`, `-l`, `-c`, `-x` ou `-b` un
+dossier et non un fichier individuel. Par exemple, pour convertir en midi tous
+les gabc du répertoire courant :
 
-    gabctk.py </chemin/vers/le/fichier/source.gabc>
-             [</chemin/vers/le/fichier/destination.mid>]
+    gabctk -i *.gabc -o .
