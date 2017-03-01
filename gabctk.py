@@ -223,33 +223,21 @@ def gabctk(entree, opts):
     # Créer le fichier midi.
     if opts.midi:
         midi = Midi(partition, titre=titre, tempo=opts.tempo)
-        sortie = FichierTexte(opts.midi).chemin
-        if os.path.isdir(sortie):
-            sortie = os.path.join(sortie, nom + '.mid')
-        midi.ecrire(sortie)
+        midi.ecrire(FichierTexte(opts.midi, nom, '.mid').chemin)
     # Créer le fichier lilypond
     if opts.lily:
         lily = Lily(partition, titre=titre, tempo=opts.tempo)
-        sortie = FichierTexte(opts.lily).chemin
-        if os.path.isdir(sortie):
-            sortie = os.path.join(sortie, nom + '.ly')
-        lily.ecrire(sortie)
+        lily.ecrire(FichierTexte(opts.lily, nom, '.ly'))
     # Créer le fichier abc
     if opts.abc or opts.mxml:
         abc = Abc(partition, titre=titre, tempo=opts.tempo)
         if opts.abc:
-            sortie = FichierTexte(opts.abc).chemin
-            if os.path.isdir(sortie):
-                sortie = os.path.join(sortie, nom + '.abc')
             abc.ecrire(
-                sortie, abc=True
+                FichierTexte(opts.abc, nom, '.abc'), abc=True
             )
         if opts.mxml:
-            sortie = FichierTexte(opts.mxml).chemin
-            if os.path.isdir(sortie):
-                sortie = os.path.join(sortie, nom + '.xml')
             abc.ecrire(
-                sortie, abc=False, xml=True
+                FichierTexte(opts.mxml, nom, '.xml'), abc=False, xml=True
             )
     # S'assurer de la présence de certains caractères,
     # à la demande de l'utilisateur.
@@ -1335,10 +1323,9 @@ class Lily:
                 musique += '%{}\n'.format(i) + notes + '\n'
         return texte, musique
 
-    def ecrire(self, chemin):
+    def ecrire(self, fichier):
         """Enregistrement du code lilypond dans un fichier"""
-        sortie = FichierTexte(chemin)
-        sortie.ecrire(LILYPOND_ENTETE % {
+        fichier.ecrire(LILYPOND_ENTETE % {
             'titre': self.titre,
             'tonalite': self.tonalite,
             'musique': self.musique,
@@ -1392,13 +1379,12 @@ class Abc:
             musique += ' '
         return texte, musique[:-3] + '|]'
 
-    def ecrire(self, chemin, abc=True, xml=False):
+    def ecrire(self, fichier, abc=True, xml=False):
         """Écriture effective du fichier abc"""
-        sortie = FichierTexte(chemin)
         if abc:
-            sortie.ecrire(self.code)
+            fichier.ecrire(self.code)
         if xml:
-            dossier, fichier = os.path.split(chemin)
+            dossier, fichier = os.path.split(fichier.chemin)
             fichier = '' if fichier == '-' else fichier
             if fichier and not dossier:
                 dossier = '.'
@@ -1412,8 +1398,8 @@ class MusicXML(Abc):
     def __init__(self, partition, titre, tempo):
         Abc.__init__(self, partition, titre, tempo)
 
-    def ecrire(self, chemin):
-        Abc.ecrire(self, chemin, abc=False, xml=True)
+    def ecrire(self, fichier):
+        Abc.ecrire(self, fichier, abc=False, xml=True)
 
 
 class Midi:
@@ -1482,7 +1468,9 @@ class Midi:
 
 class FichierTexte():
     """Gestion des fichiers texte"""
-    def __init__(self, chemin):
+    def __init__(self, chemin, nom=None, ext=None):
+        if os.path.isdir(chemin):
+            chemin = os.path.join(chemin, nom + ext)
         self.dossier = os.path.dirname(chemin)
         self.nom = os.path.splitext(os.path.basename(chemin))[0]
         self.chemin = chemin
