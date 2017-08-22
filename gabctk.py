@@ -1340,7 +1340,7 @@ class Abc:
         self.tonalite = partition.tonalite[0]
         self.texte, self.musique = self.traiter_partition(partition)
         self.titre = titre
-        self.tempo = int(tempo/2)
+        self.tempo = int(tempo[0]/2)
         self.texte, self.musique = self.traiter_partition(partition)
         self.code = ABC_ENTETE % {
             'titre': self.titre,
@@ -1408,7 +1408,7 @@ class Midi:
         # Définition des paramètres MIDI.
         piste = 0
         temps = 0
-        self.tempo = int(tempo/2)
+        self.tempo = int(tempo[0]/2)
         self.sortiemidi = MIDIFile(1, file_format=1)
         # Nom de la piste.
         self.sortiemidi.addTrackName(piste, temps, sansaccents(titre))

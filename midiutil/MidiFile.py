@@ -142,7 +142,7 @@ class Copyright(GenericEvent):
     A class that encapsulates a copyright event
     '''
     def __init__(self,time,notice, ordinal=1, insertion_order=0):
-        self.notice = notice.encode("UTF-8")
+        self.notice = notice.encode("UTF8")
         super(Copyright, self).__init__('Copyright', time, ordinal, insertion_order)
 
 class Text(GenericEvent):
@@ -150,7 +150,7 @@ class Text(GenericEvent):
     A class that encapsulates a text event
     '''
     def __init__(self, time, text, ordinal=1, insertion_order=0):
-        self.text = text.encode("UTF-8")
+        self.text = text.encode("UTF8")
         super(Text, self).__init__('Text', time, ordinal, insertion_order)
 
 class KeySignature(GenericEvent):
@@ -215,7 +215,7 @@ class TrackName(GenericEvent):
 
     def __init__(self,  time,  trackName, ordinal=0, insertion_order=0):
         #GenericEvent.__init__(self, time,)
-        self.trackName = trackName.encode("UTF-8")
+        self.trackName = trackName.encode("UTF8")
         super(TrackName, self).__init__('trackName', time, ordinal, insertion_order)
 
 class TimeSignature(GenericEvent):
