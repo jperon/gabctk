@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 """GabcTk
 
@@ -12,12 +12,11 @@ partition.
 
 """
 
-
 # Librairies externes ##################################################
 
 import os
 import sys
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser
 import re
 import unicodedata as ud
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -25,6 +24,7 @@ from midiutil.MidiFile import MIDIFile  # noqa
 from abc2xml import abc2xml  # noqa
 abc2xml.info = lambda x, warn=1: x
 
+sys.setrecursionlimit(100000)
 
 # Variables globales ###################################################
 
@@ -1340,7 +1340,10 @@ class Abc:
         self.tonalite = partition.tonalite[0]
         self.texte, self.musique = self.traiter_partition(partition)
         self.titre = titre
-        self.tempo = int(tempo[0]/2)
+        try:
+            self.tempo = int(tempo[0]/2)
+        except TypeError:
+            self.tempo = tempo / 2
         self.texte, self.musique = self.traiter_partition(partition)
         self.code = ABC_ENTETE % {
             'titre': self.titre,
@@ -1408,7 +1411,10 @@ class Midi:
         # Définition des paramètres MIDI.
         piste = 0
         temps = 0
-        self.tempo = int(tempo[0]/2)
+        try:
+            self.tempo = int(tempo[0]/2)
+        except TypeError:
+            self.tempo = tempo / 2
         self.sortiemidi = MIDIFile(1, file_format=1)
         # Nom de la piste.
         self.sortiemidi.addTrackName(piste, temps, sansaccents(titre))
