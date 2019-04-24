@@ -245,7 +245,7 @@ def gabctk(entree, opts):
     paroles = partition.texte
     # S'assurer des alertes définies par l'utilisateur.
     if opts.alerter:
-        verifier(opts.alerter, paroles)
+        alertes = verifier(opts.alerter, paroles)
     # Si l'utilisateur l'a demandé,
     # écrire les paroles dans un fichier texte.
     if opts.export:
@@ -263,15 +263,20 @@ def gabctk(entree, opts):
             ).replace('\n ', '\n//\n')
         )
         FichierTexte(opts.tab).ecrire(tablature + '\n')
+    # Code d'erreur si des alertes ont été levées.
+    sys.exit(alertes and 16 or 0)
 
 
 def verifier(alertes, texte):
     """Contrôle de la présence de certains caractères
 
     (à la demande de l'utilisateur)"""
+    n = False
     for alerte in alertes:
         if alerte in texte:
+            n = True
             sys.stderr.write("!!! " + alerte + " !!!")
+    return n
 
 
 # Classes ##############################################################
