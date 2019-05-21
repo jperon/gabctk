@@ -205,6 +205,8 @@ def sortie_verbeuse(debug, gabc, partition):
 # pylint:disable=R0913
 def gabctk(entree, opts):
     """Export dans les différents formats"""
+    transposition = opts.transposition[0] if opts.transposition else None
+    tempo = opts.tempo if opts.tempo is int else TEMPO
     # Extraire le contenu du gabc.
     try:
         f_gabc = FichierTexte(entree)
@@ -214,7 +216,7 @@ def gabctk(entree, opts):
     except FileNotFoundError:
         aide('fichier inexistant', 2)
     # Extraire la partition.
-    partition = gabc.partition(transposition=opts.transposition)
+    partition = gabc.partition(transposition=transposition)
     titre = \
         opts.titre if opts.titre \
         else gabc.entetes['name'] if 'name' in gabc.entetes \
@@ -222,15 +224,15 @@ def gabctk(entree, opts):
     sortie_verbeuse(opts.verbose, gabc, partition)
     # Créer le fichier midi.
     if opts.midi:
-        midi = Midi(partition, titre=titre, tempo=opts.tempo)
+        midi = Midi(partition, titre=titre, tempo=tempo)
         midi.ecrire(FichierTexte(opts.midi, nom, '.mid').chemin)
     # Créer le fichier lilypond
     if opts.lily:
-        lily = Lily(partition, titre=titre, tempo=opts.tempo)
+        lily = Lily(partition, titre=titre, tempo=tempo)
         lily.ecrire(FichierTexte(opts.lily, nom, '.ly'))
     # Créer le fichier abc
     if opts.abc or opts.mxml:
-        abc = Abc(partition, titre=titre, tempo=opts.tempo)
+        abc = Abc(partition, titre=titre, tempo=tempo)
         if opts.abc:
             abc.ecrire(
                 FichierTexte(opts.abc, nom, '.abc'), abc=True
@@ -1345,10 +1347,7 @@ class Abc:
         self.tonalite = partition.tonalite[0]
         self.texte, self.musique = self.traiter_partition(partition)
         self.titre = titre
-        try:
-            self.tempo = int(tempo[0]/2)
-        except TypeError:
-            self.tempo = tempo / 2
+        self.tempo = tempo / 2
         self.texte, self.musique = self.traiter_partition(partition)
         self.code = ABC_ENTETE % {
             'titre': self.titre,
@@ -1416,10 +1415,7 @@ class Midi:
         # Définition des paramètres MIDI.
         piste = 0
         temps = 0
-        try:
-            self.tempo = int(tempo[0]/2)
-        except TypeError:
-            self.tempo = tempo / 2
+        self.tempo = tempo / 2
         self.sortiemidi = MIDIFile(1, file_format=1)
         # Nom de la piste.
         self.sortiemidi.addTrackName(piste, temps, sansaccents(titre))
