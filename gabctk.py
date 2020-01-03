@@ -207,6 +207,7 @@ def gabctk(entree, opts):
     """Export dans les différents formats"""
     transposition = opts.transposition[0] if opts.transposition else None
     tempo = opts.tempo if opts.tempo is int else TEMPO
+    alertes = False
     # Extraire le contenu du gabc.
     try:
         f_gabc = FichierTexte(entree)
@@ -266,7 +267,7 @@ def gabctk(entree, opts):
         )
         FichierTexte(opts.tab).ecrire(tablature + '\n')
     # Code d'erreur si des alertes ont été levées.
-    sys.exit(alertes and 16 or 0)
+    sys.exit(16 if alertes else 0)
 
 
 def verifier(alertes, texte):
@@ -629,7 +630,7 @@ class Syllabe(ObjetLie):
         ):
             ly_texte = ''
         ly_texte = ly_texte.replace(' ', '_')
-        ly_texte = re.sub('([0-9]+\.?)', '\\set stanza = "\\1"', ly_texte)
+        ly_texte = re.sub('([0-9]+\.?)', '\\\\set stanza = "\\1"', ly_texte)
         return ly_texte\
             .replace('*', '&zwj;*')\
             .replace('<i>', '').replace('</i>', '')\
