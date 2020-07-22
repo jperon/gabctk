@@ -1302,10 +1302,10 @@ class Lily:
     """Partition lilypond"""
     def __init__(self, partition, titre, tempo):
         self.transposition = (
-            "c, ", "des, ", "d, ", "ees, ", "e, ", "f, ",
-            "fis, ", "g, ", "aes, ", "a, ", "bes, ", "b, ",
-            "c", "des", "d", "ees", "e", "f",
-            "fis", "g", "aes", "a", "bes", "b", "c'"
+            "c, ", "c, ", "d, ", "ees, ", "ees, ", "f, ",
+            "f, ", "g, ", "g, ", "a, ", "bes, ", "bes, ",
+            "c", "c", "d", "ees", "ees", "f",
+            "f", "g", "g", "a", "bes", "bes"
             )[(partition.transposition + 12) % 24]
         self.tonalite = partition.tonalite[0]
         self.texte, self.musique = self.traiter_partition(partition)
