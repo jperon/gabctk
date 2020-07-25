@@ -296,7 +296,7 @@ class Gabc:
     def parties(self):
         """Tuple contenant d'une part les en-têtes,
         d'autre part le corps du gabc"""
-        regex = re.compile('%%\n')
+        regex = re.compile('%%\r?\n')
         resultat = regex.split(self.code)
         return resultat
 
