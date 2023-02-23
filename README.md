@@ -26,6 +26,7 @@ Il peut aussi extraire le texte dans un fichier texte.
 La syntaxe est la suivante :
 
     gabctk.py -i </chemin/vers/le/fichier/source.gabc> \
+             [-n titre] \
              [-o </chemin/vers/le/fichier/destination.mid>] \
              [-l </chemin/vers/le/fichier/destination.ly>] \
              [-c </chemin/vers/le/fichier/destination.abc>] \
@@ -36,8 +37,9 @@ La syntaxe est la suivante :
              [-t tempo] \
              [-d transposition] \
              [-a alerte] \
+             [-v verbosité]
 
-Toutes les options entre crochets sont facultatives.
+Toutes les options entre crochets sont facultatives. `gabc -h` affiche une aide sommaire.
 
 Si, à la place d'un nom de fichier, vous voulez utiliser l'entrée ou la sortie
 standard, spécifiez `-`. Par exemple, pour écouter un gabc grâce à `timidity` :
