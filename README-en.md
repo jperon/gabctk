@@ -59,11 +59,19 @@ this parameter.
 
 If alerts are defined, gabctk will return a message each time it detects the
 it detects the string in the song text.
-For example, `gabctk -i \<File.gabc\> -a j -a eumdem` will return a message
+For example, `gabctk.py -i \<File.gabc\> -a j -a eumdem` will return a message
 if the text contains *j* or the word *eumdem*.
 
 It is also possible to convert several files at the same time. In this case,
 parameter to `-o`, `-l`, `-c`, `-x` or `-b` is a folder and not an individual file. For example, to convert to midi all
 gabc files in the current directory:
 
-    gabctk -i *.gabc -o .
+    gabctk.py -i *.gabc -o .
+
+Standalone executable
+---------------------
+
+Thanks to [cosmopolitan](https://github.com/jart/cosmopolitan/), a standalone
+`gabctk.com` executable can be found in [Releases](https://github.com/jperon/gabctk/releases),
+or generated from sources with `make com` command (providden `zip` command is available to shell).
+Its use is identical to what’s described above, replacing `gabctk.py` by `gabctk.com`.
