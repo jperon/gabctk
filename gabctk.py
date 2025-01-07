@@ -50,7 +50,7 @@ w: %(paroles)s
 # pylint:disable=W1401
 LILYPOND_ENTETE = '''\\version "2.18"
 
-\header {
+\\header {
   title = "%(titre)s"
   tagline = ""
   composer = ""
@@ -259,7 +259,7 @@ def gabctk(entree, opts):
     # écrire une tablature dans un fichier texte.
     if opts.tab:
         tablature = re.sub(
-            '^\s+', '',
+            r'^\s+', '',
             '\n'.join(
                 '{0}\t{1}'.format(syllabe, neume.ly) for syllabe, neume in
                 zip(partition.syllabes, partition.musique)
@@ -375,11 +375,11 @@ class Gabc:
         """Extraction de la partition à partir du contenu gabc"""
         contenu = self.contenu
         # Signes indiquant les commandes personnalisées (que l'on ignore).
-        commandeperso = re.compile("\[[^\[^\]]*\]")
+        commandeperso = re.compile(r"\[[^\[^\]]*\]")
         contenu = commandeperso.sub('', contenu)
         # Signes indiquant que l'on passe du mode texte au mode musique.
-        neume = re.compile("\([^\(\)]*\)")
-        texte = re.compile("\)?[^\(\)]*\(")
+        neume = re.compile(r"\([^\(\)]*\)")
+        texte = re.compile(r"\)?[^\(\)]*\(")
         syllabes = [
             txt.replace('(', '').replace(')', '')
             for txt in texte.findall(contenu)
@@ -391,7 +391,7 @@ class Gabc:
         partition = Partition(
             self.entetes['name'], transposition=transposition
         )
-        reprise = re.compile("<i>.*i*j\..*</i>")
+        reprise = re.compile(r"<i>.*i*j\..*</i>")
         for i, syllabe in enumerate(syllabes):
             rep = reprise.search(syllabe)
             if rep:
@@ -630,7 +630,7 @@ class Syllabe(ObjetLie):
         ):
             ly_texte = ''
         ly_texte = ly_texte.replace(' ', '_')
-        ly_texte = re.sub('([0-9]+\.?)', '\\\\set stanza = "\\1"', ly_texte)
+        ly_texte = re.sub(r'([0-9]+\.?)', '\\\\set stanza = "\\1"', ly_texte)
         return ly_texte\
             .replace('*', '&zwj;*')\
             .replace('<i>', '').replace('</i>', '')\
@@ -742,7 +742,7 @@ class Neume(list):
             Barre:          re.compile("[`,;:]"),
             Alteration:     re.compile("[xy#]"),
             Coupure:        re.compile("[/ ]"),
-            Custo:          re.compile("\+"),
+            Custo:          re.compile(r"\+"),
             Fin:            re.compile("z"),
             Cesure:         re.compile("!"),
         }
@@ -1076,7 +1076,7 @@ class Note(Signe):
         if 'ictus' in self._nuances:
             ly += '-!'
         if 'quilisma' in self._nuances:
-            ly += '\prall'
+            ly += '\\prall'
         if 'liquescence' in self._nuances:
             ly = ' \\tiny{} \\normalsize'.format(ly)
         return ly

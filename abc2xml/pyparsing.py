@@ -612,7 +612,11 @@ class ParseResults(object):
     def __dir__(self):
         return dir(super(ParseResults,self)) + list(self.keys())
 
-collections.MutableMapping.register(ParseResults)
+if hasattr (collections, 'MutableMapping'):
+    collections.MutableMapping.register(ParseResults)
+else:
+    from collections.abc import MutableMapping
+    MutableMapping.register (ParseResults)
 
 def col (loc,strg):
     """Returns current column within a string, counting newlines as line separators.
@@ -1872,7 +1876,7 @@ class QuotedString(Token):
             if isinstance(ret,basestring):
                 # replace escaped characters
                 if self.escChar:
-                    ret = re.sub(self.escCharReplacePattern,"\g<1>",ret)
+                    ret = re.sub(self.escCharReplacePattern,r"\g<1>",ret)
 
                 # replace escaped quotes
                 if self.escQuote:
